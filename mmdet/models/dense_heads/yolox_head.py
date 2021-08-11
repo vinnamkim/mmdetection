@@ -9,9 +9,9 @@ from mmcv.ops.nms import batched_nms
 
 from mmdet.core import (MlvlPointGenerator, bbox_xyxy_to_cxcywh,
                         build_assigner, build_sampler, multi_apply)
-from ..builder import HEADS, build_loss
 from .base_dense_head import BaseDenseHead
 from .dense_test_mixins import BBoxTestMixin
+from ..builder import HEADS, build_loss
 
 
 @HEADS.register_module()
@@ -458,7 +458,7 @@ class YOLOXHead(BaseDenseHead, BBoxTestMixin):
         if self.use_l1:
             l1_target = self._get_l1_target(l1_target, bbox_target,
                                             priors[pos_inds])
-        foreground_mask = torch.zeros_like(objectness).to(torch.uint8)
+        foreground_mask = torch.zeros_like(objectness).to(torch.bool)
         foreground_mask[pos_inds] = 1
         return (foreground_mask, cls_target, obj_target, bbox_target,
                 l1_target, num_pos_per_img)
