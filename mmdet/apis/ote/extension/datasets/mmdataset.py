@@ -16,6 +16,7 @@ from copy import deepcopy
 from typing import List
 
 import numpy as np
+from ote_sdk.entities.annotation import AnnotationSceneEntity
 from ote_sdk.entities.dataset_item import DatasetItemEntity
 from ote_sdk.entities.datasets import DatasetEntity
 from ote_sdk.entities.label import Domain, LabelEntity
@@ -126,12 +127,13 @@ class OTEDataset(CustomDataset):
 
             return data_info
 
-    def __init__(self, ote_dataset: DatasetEntity, labels: List[LabelEntity], pipeline, domain, test_mode: bool = False):
+    def __init__(self, ote_dataset: DatasetEntity, labels: List[LabelEntity], pipeline, domain, test_mode: bool = False, min_size=None):
         self.ote_dataset = ote_dataset
         self.labels = labels
         self.CLASSES = list(label.name for label in labels)
         self.domain = domain
         self.test_mode = test_mode
+        self.min_size = min_size
 
         # Instead of using list data_infos as in CustomDataset, this implementation of dataset
         # uses a proxy class with overriden __len__ and __getitem__; this proxy class
@@ -174,6 +176,8 @@ class OTEDataset(CustomDataset):
         :return dict: Training data and annotation after pipeline with new keys introduced by pipeline.
         """
         item = deepcopy(self.data_infos[idx])
+        if self.min_size:
+            item = self.filter_small_gt(item)
         self.pre_pipeline(item)
         return self.pipeline(item)
 
@@ -207,3 +211,28 @@ class OTEDataset(CustomDataset):
         dataset_item = self.ote_dataset[idx]
         labels = self.labels
         return get_annotation_mmdet_format(dataset_item, labels, self.domain)
+
+    def filter_small_gt(self, item: dict) -> dict:
+        """
+        Function to convert a OTE annotation to mmdetection format. This is used both in the OTEDataset class defined in
+        this file as in the custom pipeline element 'LoadAnnotationFromOTEDataset'
+
+        :param dataset_item: DatasetItem for which to get annotations
+        :param label_list: List of label names in the project
+        :return dict: annotation information dict in mmdet format
+        """
+        dataset_item = item['dataset_item']
+        width, height = dataset_item.width, dataset_item.height
+        gt_bboxes = []
+
+        for ann in dataset_item.get_annotations():
+            box = ann.shape
+            if min(box.width * width, box.height * height) >= self.min_size:
+                print(box)
+                gt_bboxes.append(ann)
+        ann_scene = dataset_item.annotation_scene
+        ann_scene.annotations(gt_bboxes)
+
+        dataset_item.annotation_scene(ann_scene)
+        item['dataset_item'] = dataset_item
+        return item
