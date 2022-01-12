@@ -1,5 +1,3 @@
-import math
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -43,7 +41,6 @@ class YOLOXHead(BaseDenseHead, BBoxTestMixin):
         loss_l1 (dict): Config of L1 loss.
         train_cfg (dict): Training config of anchor head.
         test_cfg (dict): Testing config of anchor head.
-        init_cfg (dict or list[dict], optional): Initialization config dict.
     """
 
     def __init__(self,
@@ -76,16 +73,9 @@ class YOLOXHead(BaseDenseHead, BBoxTestMixin):
                      loss_weight=1.0),
                  loss_l1=dict(type='L1Loss', reduction='sum', loss_weight=1.0),
                  train_cfg=None,
-                 test_cfg=None,
-                 init_cfg=dict(
-                     type='Kaiming',
-                     layer='Conv2d',
-                     a=math.sqrt(5),
-                     distribution='uniform',
-                     mode='fan_in',
-                     nonlinearity='leaky_relu')):
+                 test_cfg=None):
 
-        super().__init__(init_cfg=init_cfg)
+        super().__init__()
         self.num_classes = num_classes
         self.cls_out_channels = num_classes
         self.in_channels = in_channels
@@ -169,7 +159,6 @@ class YOLOXHead(BaseDenseHead, BBoxTestMixin):
         return conv_cls, conv_reg, conv_obj
 
     def init_weights(self):
-        super(YOLOXHead, self).init_weights()
         # Use prior in model initialization to improve stability
         bias_init = bias_init_with_prob(0.01)
         for conv_cls, conv_obj in zip(self.multi_level_conv_cls,

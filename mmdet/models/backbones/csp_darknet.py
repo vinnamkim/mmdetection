@@ -1,9 +1,8 @@
-import math
-
+import logging
 import torch
 import torch.nn as nn
-from mmcv.cnn import ConvModule, DepthwiseSeparableConvModule
-from mmcv.runner import BaseModule
+from mmcv.cnn import ConvModule, DepthwiseSeparableConvModule, constant_init, kaiming_init
+from mmcv.runner import load_checkpoint
 from torch.nn.modules.batchnorm import _BatchNorm
 
 from ..builder import BACKBONES
@@ -63,7 +62,7 @@ class Focus(nn.Module):
         return self.conv(x)
 
 
-class SPPBottleneck(BaseModule):
+class SPPBottleneck(nn.Module):
     """Spatial pyramid pooling layer used in YOLOv3-SPP.
 
     Args:
@@ -77,8 +76,6 @@ class SPPBottleneck(BaseModule):
             Default: dict(type='BN').
         act_cfg (dict): Config dict for activation layer.
             Default: dict(type='Swish').
-        init_cfg (dict or list[dict], optional): Initialization config dict.
-            Default: None.
     """
 
     def __init__(self,
@@ -87,9 +84,8 @@ class SPPBottleneck(BaseModule):
                  kernel_sizes=(5, 9, 13),
                  conv_cfg=None,
                  norm_cfg=dict(type='BN', momentum=0.03, eps=0.001),
-                 act_cfg=dict(type='Swish'),
-                 init_cfg=None):
-        super().__init__(init_cfg)
+                 act_cfg=dict(type='Swish')):
+        super().__init__()
         mid_channels = in_channels // 2
         self.conv1 = ConvModule(
             in_channels,
@@ -120,7 +116,7 @@ class SPPBottleneck(BaseModule):
 
 
 @BACKBONES.register_module()
-class CSPDarknet(BaseModule):
+class CSPDarknet(nn.Module):
     """CSP-Darknet backbone used in YOLOv5 and YOLOX.
 
     Args:
@@ -147,8 +143,6 @@ class CSPDarknet(BaseModule):
         norm_eval (bool): Whether to set norm layers to eval mode, namely,
             freeze running stats (mean and var). Note: Effect on Batch Norm
             and its variants only.
-        init_cfg (dict or list[dict], optional): Initialization config dict.
-            Default: None.
     Example:
         >>> from mmdet.models import CSPDarknet
         >>> import torch
@@ -185,15 +179,8 @@ class CSPDarknet(BaseModule):
                  conv_cfg=None,
                  norm_cfg=dict(type='BN', momentum=0.03, eps=0.001),
                  act_cfg=dict(type='Swish'),
-                 norm_eval=False,
-                 init_cfg=dict(
-                     type='Kaiming',
-                     layer='Conv2d',
-                     a=math.sqrt(5),
-                     distribution='uniform',
-                     mode='fan_in',
-                     nonlinearity='leaky_relu')):
-        super().__init__(init_cfg)
+                 norm_eval=False):
+        super().__init__()
         arch_setting = self.arch_settings[arch]
         if arch_ovewrite:
             arch_setting = arch_ovewrite
@@ -264,6 +251,22 @@ class CSPDarknet(BaseModule):
                 m.eval()
                 for param in m.parameters():
                     param.requires_grad = False
+
+
+    def init_weights(self, pretrained=None):
+        if isinstance(pretrained, str):
+            logger = logging.getLogger()
+            load_checkpoint(self, pretrained, strict=False, logger=logger)
+        elif pretrained is None:
+            for m in self.modules():
+                if isinstance(m, nn.Conv2d):
+                    kaiming_init(m)
+                elif isinstance(m, (_BatchNorm, nn.GroupNorm)):
+                    constant_init(m, 1)
+
+        else:
+            raise TypeError('pretrained must be a str or None')
+
 
     def train(self, mode=True):
         super(CSPDarknet, self).train(mode)

@@ -1,16 +1,13 @@
-import math
-
 import torch
 import torch.nn as nn
 from mmcv.cnn import ConvModule, DepthwiseSeparableConvModule
-from mmcv.runner import BaseModule
 
 from ..builder import NECKS
 from ..utils import CSPLayer
 
 
 @NECKS.register_module()
-class YOLOXPAFPN(BaseModule):
+class YOLOXPAFPN(nn.Module):
     """Path Aggregation Network used in YOLOX.
 
     Args:
@@ -27,8 +24,6 @@ class YOLOXPAFPN(BaseModule):
             Default: dict(type='BN')
         act_cfg (dict): Config dict for activation layer.
             Default: dict(type='Swish')
-        init_cfg (dict or list[dict], optional): Initialization config dict.
-            Default: None.
     """
 
     def __init__(self,
@@ -39,15 +34,8 @@ class YOLOXPAFPN(BaseModule):
                  upsample_cfg=dict(scale_factor=2, mode='nearest'),
                  conv_cfg=None,
                  norm_cfg=dict(type='BN', momentum=0.03, eps=0.001),
-                 act_cfg=dict(type='Swish'),
-                 init_cfg=dict(
-                     type='Kaiming',
-                     layer='Conv2d',
-                     a=math.sqrt(5),
-                     distribution='uniform',
-                     mode='fan_in',
-                     nonlinearity='leaky_relu')):
-        super(YOLOXPAFPN, self).__init__(init_cfg)
+                 act_cfg=dict(type='Swish')):
+        super(YOLOXPAFPN, self).__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
 
@@ -153,3 +141,8 @@ class YOLOXPAFPN(BaseModule):
             outs[idx] = conv(outs[idx])
 
         return tuple(outs)
+
+    def init_weights(self):
+        """Initialize the weights of module."""
+        # init is done in ConvModule
+        pass

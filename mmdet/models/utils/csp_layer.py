@@ -1,10 +1,8 @@
 import torch
 import torch.nn as nn
 from mmcv.cnn import ConvModule, DepthwiseSeparableConvModule
-from mmcv.runner import BaseModule
 
-
-class DarknetBottleneck(BaseModule):
+class DarknetBottleneck(nn.Module):
     """The basic bottleneck block used in Darknet.
 
     Each ResBlock consists of two ConvModules and the input is added to the
@@ -36,9 +34,8 @@ class DarknetBottleneck(BaseModule):
                  use_depthwise=False,
                  conv_cfg=None,
                  norm_cfg=dict(type='BN', momentum=0.03, eps=0.001),
-                 act_cfg=dict(type='Swish'),
-                 init_cfg=None):
-        super().__init__(init_cfg)
+                 act_cfg=dict(type='Swish')):
+        super().__init__()
         hidden_channels = int(out_channels * expansion)
         conv = DepthwiseSeparableConvModule if use_depthwise else ConvModule
         self.conv1 = ConvModule(
@@ -71,7 +68,7 @@ class DarknetBottleneck(BaseModule):
             return out
 
 
-class CSPLayer(BaseModule):
+class CSPLayer(nn.Module):
     """Cross Stage Partial Layer.
 
     Args:
@@ -101,9 +98,8 @@ class CSPLayer(BaseModule):
                  use_depthwise=False,
                  conv_cfg=None,
                  norm_cfg=dict(type='BN', momentum=0.03, eps=0.001),
-                 act_cfg=dict(type='Swish'),
-                 init_cfg=None):
-        super().__init__(init_cfg)
+                 act_cfg=dict(type='Swish')):
+        super().__init__()
         mid_channels = int(out_channels * expand_ratio)
         self.main_conv = ConvModule(
             in_channels,
