@@ -197,6 +197,7 @@ class OpenVINODetectionTask(IDeploymentTask, IInferenceTask, IEvaluationTask, IO
                 zip.writestr(os.path.join("model", "model.bin"), self.model.get_data("openvino.bin"))
                 zip.write(os.path.join(tempdir, "requirements.txt"), os.path.join("python", "requirements.txt"))
                 zip.write(os.path.join(work_dir, "README.md"), os.path.join("python", "README.md"))
+                zip.write(os.path.join(work_dir, "LICENSE"), os.path.join("python", "LICENSE"))
                 zip.write(os.path.join(work_dir, "demo.py"), os.path.join("python", "demo.py"))
                 zip.write(os.path.join(tempdir, wheel_file_name), os.path.join("python", wheel_file_name))
             with open(os.path.join(tempdir, "openvino.zip"), "rb") as file:
