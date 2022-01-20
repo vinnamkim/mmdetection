@@ -15,6 +15,7 @@ from ote_sdk.entities.label import Domain, LabelEntity
 from ote_sdk.entities.scored_label import ScoredLabel
 from ote_sdk.entities.shapes.rectangle import Rectangle
 from ote_sdk.entities.subset import Subset
+from ote_sdk.utils.shape_factory import ShapeFactory
 from pycocotools.coco import COCO
 
 
@@ -312,11 +313,13 @@ def get_sizes_from_dataset_entity(dataset: DatasetEntity, target_wh: list):
     """
     wh_stats = []
     for item in dataset:
-        for ann in item.get_annotations():
-            box = ann.shape
-            w = box.width * target_wh[0]
-            h = box.height * target_wh[1]
-            wh_stats.append((w, h))
+        for ann in item.get_annotations(include_empty=False):
+            has_detection_labels = any(label.domain == Domain.DETECTION for label in ann.get_labels(include_empty=False))
+            if has_detection_labels:
+                box = ShapeFactory.shape_as_rectangle(ann.shape)
+                w = box.width * target_wh[0]
+                h = box.height * target_wh[1]
+                wh_stats.append((w, h))
     return wh_stats
 
 

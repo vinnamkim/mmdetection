@@ -48,6 +48,7 @@ from ote_sdk.serialization.label_mapper import LabelSchemaMapper, label_schema_t
 from ote_sdk.usecases.evaluation.metrics_helper import MetricsHelper
 from ote_sdk.usecases.exportable_code.inference import BaseInferencer
 from ote_sdk.usecases.exportable_code.prediction_to_annotation_converter import DetectionBoxToAnnotationConverter
+from ote_sdk.usecases.exportable_code.utils import set_proper_git_commit_hash
 from ote_sdk.usecases.tasks.interfaces.deployment_interface import IDeploymentTask
 from ote_sdk.usecases.tasks.interfaces.evaluate_interface import IEvaluationTask
 from ote_sdk.usecases.tasks.interfaces.inference_interface import IInferenceTask
@@ -179,6 +180,7 @@ class OpenVINODetectionTask(IDeploymentTask, IInferenceTask, IEvaluationTask, IO
         with tempfile.TemporaryDirectory() as tempdir:
             copyfile(os.path.join(work_dir, "setup.py"), os.path.join(tempdir, "setup.py"))
             copyfile(os.path.join(work_dir, "requirements.txt"), os.path.join(tempdir, "requirements.txt"))
+            set_proper_git_commit_hash(os.path.join(tempdir, "requirements.txt"))
             copytree(os.path.join(work_dir, name_of_package), os.path.join(tempdir, name_of_package))
             config_path = os.path.join(tempdir, name_of_package, "config.json")
             with open(config_path, "w", encoding='utf-8') as f:
@@ -197,6 +199,7 @@ class OpenVINODetectionTask(IDeploymentTask, IInferenceTask, IEvaluationTask, IO
                 zip.writestr(os.path.join("model", "model.bin"), self.model.get_data("openvino.bin"))
                 zip.write(os.path.join(tempdir, "requirements.txt"), os.path.join("python", "requirements.txt"))
                 zip.write(os.path.join(work_dir, "README.md"), os.path.join("python", "README.md"))
+                zip.write(os.path.join(work_dir, "LICENSE"), os.path.join("python", "LICENSE"))
                 zip.write(os.path.join(work_dir, "demo.py"), os.path.join("python", "demo.py"))
                 zip.write(os.path.join(tempdir, wheel_file_name), os.path.join("python", wheel_file_name))
             with open(os.path.join(tempdir, "openvino.zip"), "rb") as file:
