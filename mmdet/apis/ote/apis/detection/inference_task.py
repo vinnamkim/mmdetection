@@ -21,6 +21,7 @@ import warnings
 from subprocess import run  # nosec
 from typing import List, Optional, Tuple
 
+import cv2
 import numpy as np
 import torch
 from mmcv.parallel import MMDataParallel
@@ -30,8 +31,10 @@ from ote_sdk.entities.annotation import Annotation
 from ote_sdk.entities.datasets import DatasetEntity
 from ote_sdk.entities.inference_parameters import InferenceParameters, default_progress_callback
 from ote_sdk.entities.model import ModelEntity, ModelFormat, ModelOptimizationType, ModelPrecision
+from ote_sdk.entities.model_template import TaskType
 from ote_sdk.entities.resultset import ResultSetEntity
 from ote_sdk.entities.scored_label import ScoredLabel
+from ote_sdk.entities.shapes.polygon import Point, Polygon
 from ote_sdk.entities.shapes.rectangle import Rectangle
 from ote_sdk.entities.task_environment import TaskEnvironment
 from ote_sdk.entities.tensor import TensorEntity
@@ -72,7 +75,7 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
         run('pip list', shell=True, check=True)
 
         self._task_environment = task_environment
-
+        self._task_type = task_environment.model_template.task_type
         self._scratch_space = tempfile.mkdtemp(prefix="ote-det-scratch-")
         logger.info(f'Scratch space created at {self._scratch_space}')
 
@@ -168,29 +171,56 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
 
     def _add_predictions_to_dataset(self, prediction_results, dataset, confidence_threshold=0.0):
         """ Loop over dataset again to assign predictions. Convert from MMDetection format to OTE format. """
-        for dataset_item, (all_bboxes, feature_vector) in zip(dataset, prediction_results):
+        for dataset_item, (all_results, feature_vector) in zip(dataset, prediction_results):
             width = dataset_item.width
             height = dataset_item.height
 
             shapes = []
-            for label_idx, detections in enumerate(all_bboxes):
-                for i in range(detections.shape[0]):
-                    probability = float(detections[i, 4])
-                    coords = detections[i, :4].astype(float).copy()
-                    coords /= np.array([width, height, width, height], dtype=float)
-                    coords = np.clip(coords, 0, 1)
+            if isinstance(all_results, list):
+                for label_idx, detections in enumerate(all_results):
+                    for i in range(detections.shape[0]):
+                        probability = float(detections[i, 4])
+                        coords = detections[i, :4].astype(float).copy()
+                        coords /= np.array([width, height, width, height], dtype=float)
+                        coords = np.clip(coords, 0, 1)
 
-                    if probability < confidence_threshold:
-                        continue
+                        if probability < confidence_threshold:
+                            continue
 
-                    assigned_label = [ScoredLabel(self._labels[label_idx],
-                                                  probability=probability)]
-                    if coords[3] - coords[1] <= 0 or coords[2] - coords[0] <= 0:
-                        continue
+                        assigned_label = [ScoredLabel(self._labels[label_idx],
+                                                      probability=probability)]
+                        if coords[3] - coords[1] <= 0 or coords[2] - coords[0] <= 0:
+                            continue
 
-                    shapes.append(Annotation(
-                        Rectangle(x1=coords[0], y1=coords[1], x2=coords[2], y2=coords[3]),
-                        labels=assigned_label))
+                        shapes.append(Annotation(
+                            Rectangle(x1=coords[0], y1=coords[1], x2=coords[2], y2=coords[3]),
+                            labels=assigned_label))
+            elif isinstance(all_results, tuple):
+                box_results, mask_results = all_results
+                for label_idx, masks in enumerate(mask_results):
+                    probs = box_results[label_idx][:, 4]
+                    for i, mask in enumerate(masks):
+                        mask = mask.astype(np.uint8)
+                        contours, hierarchies = cv2.findContours(
+                          mask, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+                        if hierarchies is None:
+                            continue
+                        for contour, hierarchy in zip(contours, hierarchies[0]):
+                            if hierarchy[3] != -1:
+                                continue
+                            contour = list(contour)
+                            if len(contour) <= 2:
+                                continue
+                            points = [
+                                Point(
+                                  x=point[0][0] / width, 
+                                  y=point[0][1] / height) for point in contour]
+                            shapes.append(Annotation(
+                              Polygon(points=points),
+                              labels=[
+                                ScoredLabel(self._labels[label_idx],
+                                probability=probs[i])],
+                              id=label_idx,))
 
             dataset_item.append_annotations(shapes)
 
@@ -235,11 +265,20 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
 
 
     @staticmethod
-    def _infer_detector(model: torch.nn.Module, config: Config, dataset: DatasetEntity, dump_features: bool = False,
-                        eval: Optional[bool] = False, metric_name: Optional[str] = 'mAP') -> Tuple[List, float]:
+    def _infer_detector(
+      model: torch.nn.Module,
+      config: Config,
+      dataset: DatasetEntity,
+      dump_features: bool = False,
+      eval: Optional[bool] = False,
+      metric_name: Optional[str] = 'mAP',
+      task_type: Optional[TaskType] = TaskType.DETECTION) -> Tuple[List, float]:
         model.eval()
         test_config = prepare_for_testing(config, dataset)
-        mm_val_dataset = build_dataset(test_config.data.test)
+        default_args = None
+        if task_type == TaskType.COUNTING:
+            default_args={'with_mask': True}
+        mm_val_dataset = build_dataset(test_config.data.test, default_args)
         batch_size = 1
         mm_val_dataloader = build_dataloader(mm_val_dataset,
                                              samples_per_gpu=batch_size,

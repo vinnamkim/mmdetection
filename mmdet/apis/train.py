@@ -60,14 +60,18 @@ def add_logging_on_first_and_last_iter(runner):
             hook.every_n_inner_iters = every_n_inner_iters.__get__(hook)
 
 
-def build_val_dataloader(cfg, distributed):
+def build_val_dataloader(cfg, distributed, default_args):
     # Support batch_size > 1 in validation
     val_samples_per_gpu = cfg.data.val.pop('samples_per_gpu', 1)
     if val_samples_per_gpu > 1:
         # Replace 'ImageToTensor' to 'DefaultFormatBundle'
         cfg.data.val.pipeline = replace_ImageToTensor(
             cfg.data.val.pipeline)
-    val_dataset = build_dataset(cfg.data.val, dict(test_mode=True))
+    if default_args is not None:
+        default_args.update(dict(test_mode=True))
+    else:
+        default_args =  dict(test_mode=True)
+    val_dataset = build_dataset(cfg.data.val, default_args)
     val_dataloader = build_dataloader(
         val_dataset,
         samples_per_gpu=val_samples_per_gpu,
@@ -85,7 +89,8 @@ def train_detector(model,
                    timestamp=None,
                    meta=None,
                    val_dataloader=None,
-                   compression_ctrl=None):
+                   compression_ctrl=None,
+                   default_args=None):
     logger = get_root_logger(cfg.log_level)
 
     # prepare data loaders
@@ -127,7 +132,7 @@ def train_detector(model,
         model = model.cuda()
 
     if validate and not val_dataloader:
-        val_dataloader = build_val_dataloader(cfg, distributed)
+        val_dataloader = build_val_dataloader(cfg, distributed, default_args)
 
     # nncf model wrapper
     nncf_enable_compression = 'nncf_config' in cfg

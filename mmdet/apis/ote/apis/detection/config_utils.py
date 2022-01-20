@@ -245,6 +245,12 @@ def set_data_classes(config: Config, labels: List[LabelEntity]):
                 head.num_classes = num_classes
         else:
             config.model.roi_head.bbox_head.num_classes = num_classes
+
+        if isinstance(config.model.roi_head.mask_head, List):
+            for head in config.model.roi_head.mask_head:
+                head.num_classes = num_classes
+        else:
+            config.model.roi_head.mask_head.num_classes = num_classes
     elif 'bbox_head' in config.model:
         config.model.bbox_head.num_classes = num_classes
     # FIXME. ?

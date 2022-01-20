@@ -14,7 +14,7 @@ import numpy as np
 from mmcv.utils import print_log
 from torch.utils.data import Dataset
 
-from mmdet.core import eval_map, eval_recalls
+from mmdet.core import eval_map, eval_recalls, eval_segm
 from .builder import DATASETS
 from .pipelines import Compose
 
@@ -320,12 +320,17 @@ class CustomDataset(Dataset):
         annotations = [self.get_ann_info(i) for i in range(len(self))]
         eval_results = OrderedDict()
         iou_thrs = [iou_thr] if isinstance(iou_thr, float) else iou_thr
+        # EUGENE: ADD MAE METRIC
         if metric == 'mAP':
             assert isinstance(iou_thrs, list)
+            if isinstance(results[0], tuple):
+              eval_func = eval_segm
+            elif isinstance(results[0], list):
+              eval_func = eval_map
             mean_aps = []
             for iou_thr in iou_thrs:
                 print_log(f'\n{"-" * 15}iou_thr: {iou_thr}{"-" * 15}')
-                mean_ap, _ = eval_map(
+                mean_ap, _ = eval_func(
                     results,
                     annotations,
                     scale_ranges=scale_ranges,
