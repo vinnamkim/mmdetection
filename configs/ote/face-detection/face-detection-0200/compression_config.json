@@ -14,10 +14,11 @@
             "lr": 0.00025
         },
         "lr_config": {
-            "_delete_": true,
             "policy": "fixed"
         },
-        "total_epochs": 2,
+        "runner": {
+           "max_epochs": 2
+        },
         "nncf_config": {
             "compression": [
                 {
@@ -38,7 +39,9 @@
         "optimizer": {
             "lr": 0.0025
         },
-        "total_epochs": 50,
+        "runner": {
+           "max_epochs": 50
+       },
         "nncf_config": {
             "compression": [
                 {
@@ -63,7 +66,9 @@
             "warmup_ratio": 0.1,
             "step": [40, 60]
         },
-        "total_epochs": 80,
+        "runner": {
+           "max_epochs": 50
+        },
         "nncf_config": {
             "compression": [
                 {
