@@ -1,11 +1,14 @@
-from multiprocessing import Pool
+import mmcv
 import numpy as np
-
+import pycocotools.mask as mask_util
+from mmcv.utils import print_log
+from multiprocessing import Pool
+from terminaltables import AsciiTable
+from typing import Dict, List
 
 from mmdet.core.mask.structures import PolygonMasks
-import pycocotools.mask as mask_util
-from typing import List, Dict
-from .mean_ap import average_precision, print_map_summary
+from .class_names import get_classes
+from .mean_ap import average_precision
 
 
 def tpfpmiou_func(
@@ -36,9 +39,9 @@ def tpfpmiou_func(
 
     if len(gt_masks) == 0:
         fp[...] = 1
-        return tp, fp, np.mean(gt_covered_iou)
+        return tp, fp, 0.0
     if num_dets == 0:
-        return tp, fp, np.mean(gt_covered_iou)
+        return tp, fp, 0.0
 
     ious = mask_util.iou(det_masks, gt_masks, len(gt_masks) * [0])
     # for each det, the max iou with all gts
@@ -77,11 +80,11 @@ def get_cls_results(det_results, annotations, class_id):
         for det_mask in det_masks:
             if isinstance(det_mask, np.ndarray):
                 cls_dets[i].append(
-                  mask_util.encode(
-                    np.array(
-                      det_mask[:, :, np.newaxis], order='F', dtype='uint8'))[0])
+                    mask_util.encode(
+                        np.array(
+                            det_mask[:, :, np.newaxis], order='F', dtype='uint8'))[0])
             else:
-              cls_dets[i].append(det_mask)
+                cls_dets[i].append(det_mask)
 
     cls_gts = []
     for ann in annotations:
@@ -99,6 +102,77 @@ def get_cls_results(det_results, annotations, class_id):
             raise RuntimeError("UNKNOWN ANNOTATION FORMAT")
 
     return cls_dets, cls_gts, cls_scores
+
+
+def print_map_summary(mean_ap,
+                      results,
+                      dataset=None,
+                      scale_ranges=None,
+                      logger=None):
+    """Print mAP and results of each class.
+
+    A table will be printed to show the gts/dets/recall/AP of each class and
+    the mAP.
+
+    Args:
+        mean_ap (float): Calculated from `eval_map()`.
+        results (list[dict]): Calculated from `eval_map()`.
+        dataset (list[str] | str | None): Dataset name or dataset classes.
+        scale_ranges (list[tuple] | None): Range of scales to be evaluated.
+        logger (logging.Logger | str | None): The way to print the mAP
+            summary. See `mmcv.utils.print_log()` for details. Default: None.
+    """
+
+    if logger == 'silent':
+        return
+
+    if isinstance(results[0]['ap'], np.ndarray):
+        num_scales = len(results[0]['ap'])
+    else:
+        num_scales = 1
+
+    if scale_ranges is not None:
+        assert len(scale_ranges) == num_scales
+
+    num_classes = len(results)
+
+    recalls = np.zeros((num_scales, num_classes), dtype=np.float32)
+    aps = np.zeros((num_scales, num_classes), dtype=np.float32)
+    num_gts = np.zeros((num_scales, num_classes), dtype=int)
+    mious = np.zeros((num_scales, num_classes), dtype=np.float32)
+    for i, cls_result in enumerate(results):
+        if cls_result['recall'].size > 0:
+            recalls[:, i] = np.array(cls_result['recall'], ndmin=2)[:, -1]
+        aps[:, i] = cls_result['ap']
+        mious[:, i] = cls_result['miou']
+        num_gts[:, i] = cls_result['num_gts']
+
+    if dataset is None:
+        label_names = [str(i) for i in range(num_classes)]
+    elif mmcv.is_str(dataset):
+        label_names = get_classes(dataset)
+    else:
+        label_names = dataset
+
+    if not isinstance(mean_ap, list):
+        mean_ap = [mean_ap]
+
+    header = ['class', 'gts', 'dets', 'recall', 'ap', 'miou']
+    for i in range(num_scales):
+        if scale_ranges is not None:
+            print_log(f'Scale range {scale_ranges[i]}', logger=logger)
+        table_data = [header]
+        for j in range(num_classes):
+            row_data = [
+                label_names[j], num_gts[i, j], results[j]['num_dets'],
+                f'{recalls[i, j]:.3f}', f'{aps[i, j]:.3f}', f'{mious[i, j]:.3f}'
+            ]
+            table_data.append(row_data)
+        table_data.append(
+            ['mAP', '', '', '', f'{mean_ap[i]:.3f}', f'{np.mean(mious[i]):.3f}'])
+        table = AsciiTable(table_data)
+        table.inner_footing_row_border = True
+        print_log('\n' + table.table, logger=logger)
 
 
 def eval_segm(
@@ -142,6 +216,7 @@ def eval_segm(
         eps = np.finfo(np.float32).eps
         recalls = tp / np.maximum(num_gts, eps)
         precisions = tp / np.maximum((tp + fp), eps)
+        miou = np.mean(np.stack(miou))
         # calculate AP
         mode = 'area' if dataset != 'voc07' else '11points'
         ap = average_precision(recalls, precisions, mode)
@@ -155,13 +230,18 @@ def eval_segm(
         })
     pool.close()
 
-    aps = []
+    metrics = {'mAP': 0.0, 'mIoU': 0.0}
+    mious, aps = [], []
     for cls_result in eval_results:
         if cls_result['num_gts'] > 0:
             aps.append(cls_result['ap'])
+            mious.append(cls_result['miou'])
     mean_ap = np.array(aps).mean().item() if aps else 0.0
+    mean_miou = np.array(mious).mean().item() if mious else 0.0
+    metrics['mAP'] = mean_ap
+    metrics['mIoU'] = mean_miou
 
     print_map_summary(
         mean_ap, eval_results, dataset, None, logger=logger)
 
-    return mean_ap, eval_results
+    return metrics['mIoU'], eval_results

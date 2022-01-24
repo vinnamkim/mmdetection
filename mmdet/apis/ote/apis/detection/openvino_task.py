@@ -41,13 +41,14 @@ from ote_sdk.entities.model import (
     ModelPrecision,
     OptimizationMethod,
 )
+from ote_sdk.entities.model_template import TaskType
 from ote_sdk.entities.optimization_parameters import OptimizationParameters
 from ote_sdk.entities.resultset import ResultSetEntity
 from ote_sdk.entities.task_environment import TaskEnvironment
 from ote_sdk.serialization.label_mapper import LabelSchemaMapper, label_schema_to_bytes
 from ote_sdk.usecases.evaluation.metrics_helper import MetricsHelper
 from ote_sdk.usecases.exportable_code.inference import BaseInferencer
-from ote_sdk.usecases.exportable_code.prediction_to_annotation_converter import DetectionBoxToAnnotationConverter
+from ote_sdk.usecases.exportable_code.prediction_to_annotation_converter import DetectionBoxToAnnotationConverter, MaskToAnnotationConverter
 from ote_sdk.usecases.exportable_code.utils import set_proper_git_commit_hash
 from ote_sdk.usecases.tasks.interfaces.deployment_interface import IDeploymentTask
 from ote_sdk.usecases.tasks.interfaces.evaluate_interface import IEvaluationTask
@@ -104,6 +105,49 @@ class OpenVINODetectionInferencer(BaseInferencer):
         return self.model.infer_sync(inputs)
 
 
+class OpenVINOMaskInferencer(BaseInferencer):
+    def __init__(
+        self,
+        hparams: OTEDetectionConfig,
+        label_schema: LabelSchemaEntity,
+        model_file: Union[str, bytes],
+        weight_file: Union[str, bytes, None] = None,
+        device: str = "CPU",
+        num_requests: int = 1,
+    ):
+        model_adapter = OpenvinoAdapter(
+          create_core(),
+          model_file,
+          weight_file,
+          device=device,
+          max_num_requests=num_requests)
+
+        self.configuration = {
+          **attr.asdict(
+            hparams.postprocessing,
+            filter=lambda attr, value: attr.name not in [
+              'header', 'description', 'type', 'visible_in_ui'])}
+
+        self.model = Model.create_model(
+          'maskrcnn',
+          model_adapter,
+          self.configuration,
+          preload=True)
+
+        self.converter = MaskToAnnotationConverter(label_schema)
+
+    def pre_process(self, image: np.ndarray) -> Tuple[Dict[str, np.ndarray], Dict[str, Any]]:
+        return self.model.preprocess(image)
+
+    def post_process(self, prediction: Dict[str, np.ndarray], metadata: Dict[str, Any]) -> AnnotationSceneEntity:
+        detections = self.model.postprocess(prediction, metadata)
+
+        return self.converter.convert_to_annotation(detections, metadata)
+
+    def forward(self, inputs: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
+        return self.model.infer_sync(inputs)
+
+
 class OTEOpenVinoDataLoader(DataLoader):
     def __init__(self, dataset: DatasetEntity, inferencer: BaseInferencer):
         self.dataset = dataset
@@ -125,6 +169,7 @@ class OpenVINODetectionTask(IDeploymentTask, IInferenceTask, IEvaluationTask, IO
         logger.info('Loading OpenVINO OTEDetectionTask')
         self.task_environment = task_environment
         self.model = self.task_environment.model
+        self.task_type = self.task_environment.model_template.task_type
         self.confidence_threshold: float = 0.0
         self.model_name = task_environment.model_template.model_template_id
         self.inferencer = self.load_inferencer()
@@ -134,14 +179,23 @@ class OpenVINODetectionTask(IDeploymentTask, IInferenceTask, IEvaluationTask, IO
     def hparams(self):
         return self.task_environment.get_hyper_parameters(OTEDetectionConfig)
 
-    def load_inferencer(self) -> OpenVINODetectionInferencer:
+    def load_inferencer(self) -> Union[OpenVINODetectionInferencer, OpenVINOMaskInferencer] :
         _hparams = copy.deepcopy(self.hparams)
         self.confidence_threshold = float(np.frombuffer(self.model.get_data("confidence_threshold"), dtype=np.float32)[0])
         _hparams.postprocessing.confidence_threshold = self.confidence_threshold
-        return OpenVINODetectionInferencer(_hparams,
-                                           self.task_environment.label_schema,
-                                           self.model.get_data("openvino.xml"),
-                                           self.model.get_data("openvino.bin"))
+        if self.task_type == TaskType.DETECTION:
+            return OpenVINODetectionInferencer(_hparams,
+                                              self.task_environment.label_schema,
+                                              self.model.get_data("openvino.xml"),
+                                              self.model.get_data("openvino.bin"))
+        elif self.task_type == TaskType.COUNTING:
+            return OpenVINOMaskInferencer(
+              _hparams,
+              self.task_environment.label_schema,
+              self.model.get_data("openvino.xml"),
+              self.model.get_data("openvino.bin"))
+        else:
+            raise RuntimeError(f"Unknown OpenVINO Inferencer TaskType: {self.task_type}")
 
     def infer(self, dataset: DatasetEntity, inference_parameters: Optional[InferenceParameters] = None) -> DatasetEntity:
         logger.info('Start OpenVINO inference')

@@ -314,7 +314,7 @@ class CustomDataset(Dataset):
         if not isinstance(metric, str):
             assert len(metric) == 1
             metric = metric[0]
-        allowed_metrics = ['mAP', 'recall']
+        allowed_metrics = ['mAP', 'recall', 'mIoU']
         if metric not in allowed_metrics:
             raise KeyError(f'metric {metric} is not supported')
         annotations = [self.get_ann_info(i) for i in range(len(self))]
@@ -323,14 +323,10 @@ class CustomDataset(Dataset):
         # EUGENE: ADD MAE METRIC
         if metric == 'mAP':
             assert isinstance(iou_thrs, list)
-            if isinstance(results[0], tuple):
-              eval_func = eval_segm
-            elif isinstance(results[0], list):
-              eval_func = eval_map
             mean_aps = []
             for iou_thr in iou_thrs:
                 print_log(f'\n{"-" * 15}iou_thr: {iou_thr}{"-" * 15}')
-                mean_ap, _ = eval_func(
+                mean_ap, _ = eval_map(
                     results,
                     annotations,
                     scale_ranges=scale_ranges,
@@ -351,4 +347,19 @@ class CustomDataset(Dataset):
                 ar = recalls.mean(axis=1)
                 for i, num in enumerate(proposal_nums):
                     eval_results[f'AR@{num}'] = ar[i]
+        elif metric == 'mIoU':
+            assert isinstance(results[0], tuple)
+            mean_mious = []
+            for iou_thr in iou_thrs:
+                print_log(f'\n{"-" * 15}iou_thr: {iou_thr}{"-" * 15}')
+                mean_iou, _ = eval_segm(
+                    results,
+                    annotations,
+                    scale_ranges=scale_ranges,
+                    iou_thr=iou_thr,
+                    dataset=self.CLASSES,
+                    logger=logger)
+                mean_mious.append(mean_iou)
+                eval_results[f'mIoU{int(iou_thr * 100):02d}'] = round(mean_iou, 3)
+            eval_results['mIoU'] = sum(mean_mious) / len(mean_mious)
         return eval_results
