@@ -29,6 +29,7 @@ from ote_sdk.entities.model import (
     ModelPrecision,
     OptimizationMethod,
 )
+from ote_sdk.entities.model_template import TaskType
 from ote_sdk.entities.optimization_parameters import default_progress_callback, OptimizationParameters
 from ote_sdk.entities.subset import Subset
 from ote_sdk.entities.task_environment import TaskEnvironment
@@ -156,7 +157,7 @@ class OTEDetectionNNCFTask(OTEDetectionInferenceTask, IOptimizationTask):
         self._compression_ctrl = compression_ctrl
         return model
 
-    def _create_compressed_model(self, dataset, config):
+    def _create_compressed_model(self, dataset, config, default_args):
         init_dataloader = build_dataloader(
             dataset,
             config.data.samples_per_gpu,
@@ -167,7 +168,7 @@ class OTEDetectionNNCFTask(OTEDetectionInferenceTask, IOptimizationTask):
         is_acc_aware_training_set = is_accuracy_aware_training_set(config.get("nncf_config"))
 
         if is_acc_aware_training_set:
-            self._val_dataloader = build_val_dataloader(config, False)
+            self._val_dataloader = build_val_dataloader(config, False, default_args)
 
         self._compression_ctrl, self._model = wrap_nncf_model(
             self._model,
@@ -199,14 +200,18 @@ class OTEDetectionNNCFTask(OTEDetectionInferenceTask, IOptimizationTask):
         time_monitor = TrainingProgressCallback(update_progress_callback)
         learning_curves = defaultdict(OTELoggerHook.Curve)
         training_config = prepare_for_training(config, train_dataset, val_dataset, time_monitor, learning_curves)
-        mm_train_dataset = build_dataset(training_config.data.train)
+
+        default_args = None
+        if self._task_type == TaskType.COUNTING:
+            default_args={'with_mask': True}
+        mm_train_dataset = build_dataset(training_config.data.train, default_args)
 
         if torch.cuda.is_available():
             self._model.cuda(training_config.gpu_ids[0])
 
         # Initialize NNCF parts if start from not compressed model
         if not self._compression_ctrl:
-            self._create_compressed_model(mm_train_dataset, training_config)
+            self._create_compressed_model(mm_train_dataset, training_config, default_args)
 
         # Run training.
         self._training_work_dir = training_config.work_dir
@@ -218,7 +223,8 @@ class OTEDetectionNNCFTask(OTEDetectionInferenceTask, IOptimizationTask):
                        cfg=training_config,
                        validate=True,
                        val_dataloader=self._val_dataloader,
-                       compression_ctrl=self._compression_ctrl)
+                       compression_ctrl=self._compression_ctrl,
+                       default_args=copy.copy(default_args))
 
         # Check for stop signal when training has stopped. If should_stop is true, training was cancelled
         if self._should_stop:
