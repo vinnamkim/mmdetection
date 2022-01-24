@@ -208,8 +208,11 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
                         for contour, hierarchy in zip(contours, hierarchies[0]):
                             if hierarchy[3] != -1:
                                 continue
+                            # TODO(ikrylov): MinAreaRect box points should be returned in case of Rotated Object Detection
+                            # rect = cv2.minAreaRect(contour)
+                            # box = cv2.boxPoints(rect)
                             contour = list(contour)
-                            if len(contour) <= 2:
+                            if len(contour) <= 2 or probs[i] < confidence_threshold:
                                 continue
                             points = [
                                 Point(
