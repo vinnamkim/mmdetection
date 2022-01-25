@@ -224,7 +224,7 @@ class OTEDetectionNNCFTask(OTEDetectionInferenceTask, IOptimizationTask):
                        validate=True,
                        val_dataloader=self._val_dataloader,
                        compression_ctrl=self._compression_ctrl,
-                       default_args=copy.copy(default_args))
+                       default_args=default_args)
 
         # Check for stop signal when training has stopped. If should_stop is true, training was cancelled
         if self._should_stop:

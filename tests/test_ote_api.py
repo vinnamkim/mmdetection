@@ -581,7 +581,6 @@ class API(unittest.TestCase):
             export_perf_delta_tolerance=0.01)
 
     @e2e_pytest_api
-    # EUGENE: WIP
     def test_training_maskrcnn_resnet50(self):
         self.end_to_end(osp.join('configs', 'ote',
                         'custom-counting-instance-seg', 'resnet50_maskrcnn'),
