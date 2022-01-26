@@ -30,9 +30,7 @@ from mmdet.datasets.pipelines import Compose
 def get_annotation_mmdet_format(
     dataset_item: DatasetItemEntity,
     labels: List[LabelEntity],
-    with_mask: bool = False
 ) -> dict:
-    # EUGENE: DOCSTRING: with_mask
     """
     Function to convert a OTE annotation to mmdetection format. This is used both in the OTEDataset class defined in
     this file as in the custom pipeline element 'LoadAnnotationFromOTEDataset'
@@ -63,7 +61,7 @@ def get_annotation_mmdet_format(
         n = len(class_indices)
         gt_bboxes.extend([[box.x1 * width, box.y1 * height, box.x2 * width, box.y2 * height] for _ in range(n)])
         gt_labels.extend(class_indices)
-        if with_mask:
+        if hasattr(annotation.shape, "points"):
             points = []
             for p in annotation.shape.points:
                 points.extend([p.x * width, p.y * height])
@@ -75,7 +73,7 @@ def get_annotation_mmdet_format(
             bboxes=np.array(gt_bboxes, dtype=np.float32).reshape(-1, 4),
             labels=np.array(gt_labels, dtype=int),
             masks=PolygonMasks(
-                polygons, height=height, width=width) if with_mask else [])
+                polygons, height=height, width=width) if polygons else [])
     else:
         ann_info = dict(
             bboxes=np.zeros((0, 4), dtype=np.float32),
@@ -129,18 +127,11 @@ class OTEDataset(CustomDataset):
 
             return data_info
 
-    def __init__(
-            self,
-            ote_dataset: DatasetEntity,
-            labels: List[LabelEntity],
-            pipeline,
-            test_mode: bool = False,
-            with_mask: bool = False):
+    def __init__(self, ote_dataset: DatasetEntity, labels: List[LabelEntity], pipeline, test_mode: bool = False):
         self.ote_dataset = ote_dataset
         self.labels = labels
         self.CLASSES = list(label.name for label in labels)
         self.test_mode = test_mode
-        self.with_mask = with_mask
 
         # Instead of using list data_infos as in CustomDataset, this implementation of dataset
         # uses a proxy class with overriden __len__ and __getitem__; this proxy class
@@ -215,4 +206,4 @@ class OTEDataset(CustomDataset):
         """
         dataset_item = self.ote_dataset[idx]
         labels = self.labels
-        return get_annotation_mmdet_format(dataset_item, labels, self.with_mask)
+        return get_annotation_mmdet_format(dataset_item, labels)

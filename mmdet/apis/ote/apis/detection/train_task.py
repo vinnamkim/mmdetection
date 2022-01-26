@@ -27,7 +27,6 @@ from ote_sdk.entities.datasets import DatasetEntity
 from ote_sdk.entities.metrics import (BarChartInfo, BarMetricsGroup, CurveMetric, LineChartInfo, LineMetricsGroup, MetricsGroup,
                                       ScoreMetric, VisualizationType)
 from ote_sdk.entities.model import ModelEntity, ModelPrecision
-from ote_sdk.entities.model_template import TaskType
 from ote_sdk.entities.resultset import ResultSetEntity
 from ote_sdk.entities.subset import Subset
 from ote_sdk.entities.train_parameters import TrainParameters, default_progress_callback
@@ -119,21 +118,11 @@ class OTEDetectionTrainingTask(OTEDetectionInferenceTask, ITrainingTask):
         learning_curves = defaultdict(OTELoggerHook.Curve)
         training_config = prepare_for_training(config, train_dataset, val_dataset, time_monitor, learning_curves)
         self._training_work_dir = training_config.work_dir
-        
-        default_args = None
-        if self._task_type == TaskType.COUNTING:
-            default_args={'with_mask': True}
-        
-        mm_train_dataset = build_dataset(training_config.data.train, default_args)
+        mm_train_dataset = build_dataset(training_config.data.train)
         self._is_training = True
         self._model.train()
         logger.info('Start training')
-        train_detector(
-          model=self._model,
-          dataset=mm_train_dataset,
-          cfg=training_config,
-          validate=True,
-          default_args=copy.copy(default_args))
+        train_detector(model=self._model, dataset=mm_train_dataset, cfg=training_config, validate=True)
         logger.info('Training completed')
 
         # Check for stop signal when training has stopped. If should_stop is true, training was cancelled and no new
@@ -160,13 +149,13 @@ class OTEDetectionTrainingTask(OTEDetectionInferenceTask, ITrainingTask):
 
         # Get predictions on the validation set.
         val_preds, val_map = self._infer_detector(
-          self._model,
-          config,
-          val_dataset,
-          metric_name=config.evaluation.metric,
-          dump_features=False,
-          eval=True,
-          task_type=self._task_type)
+            self._model,
+            config,
+            val_dataset,
+            metric_name=config.evaluation.metric,
+            dump_features=False,
+            eval=True
+        )
         preds_val_dataset = val_dataset.with_empty_annotations()
         self._add_predictions_to_dataset(val_preds, preds_val_dataset, 0.0)
         resultset = ResultSetEntity(

@@ -271,20 +271,11 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
 
 
     @staticmethod
-    def _infer_detector(
-      model: torch.nn.Module,
-      config: Config,
-      dataset: DatasetEntity,
-      dump_features: bool = False,
-      eval: Optional[bool] = False,
-      metric_name: Optional[str] = 'mAP',
-      task_type: Optional[TaskType] = TaskType.DETECTION) -> Tuple[List, float]:
+    def _infer_detector(model: torch.nn.Module, config: Config, dataset: DatasetEntity, dump_features: bool = False,
+                        eval: Optional[bool] = False, metric_name: Optional[str] = 'mAP') -> Tuple[List, float]:
         model.eval()
         test_config = prepare_for_testing(config, dataset)
-        default_args = None
-        if task_type == TaskType.COUNTING:
-            default_args={'with_mask': True}
-        mm_val_dataset = build_dataset(test_config.data.test, default_args)
+        mm_val_dataset = build_dataset(test_config.data.test)
         batch_size = 1
         mm_val_dataloader = build_dataloader(mm_val_dataset,
                                              samples_per_gpu=batch_size,

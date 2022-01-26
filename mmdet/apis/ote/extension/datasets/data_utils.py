@@ -35,7 +35,6 @@ class LoadAnnotations:
         self.with_bbox = with_bbox
         self.with_label = with_label
         self.with_mask = with_mask
-        self.poly2mask = False
 
     def _load_bboxes(self, results):
         ann_info = results["ann_info"]
