@@ -77,14 +77,8 @@ class LoadAnnotationFromOTEDataset:
 
     """
 
-    def __init__(
-            self,
-            with_bbox: bool = True,
-            with_label: bool = True,
-            with_mask: bool = False,
-            with_seg: bool = False,
-            poly2mask: bool = True,
-            with_text: bool = False):
+    def __init__(self, with_bbox: bool = True, with_label: bool = True, with_mask: bool = False, with_seg: bool = False,
+                 poly2mask: bool = True, with_text: bool = False):
         self.with_bbox = with_bbox
         self.with_label = with_label
         self.with_mask = with_mask

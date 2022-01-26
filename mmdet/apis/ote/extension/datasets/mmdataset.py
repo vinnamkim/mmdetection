@@ -127,12 +127,7 @@ class OTEDataset(CustomDataset):
 
             return data_info
 
-    def __init__(
-            self,
-            ote_dataset: DatasetEntity,
-            labels: List[LabelEntity],
-            pipeline,
-            test_mode: bool = False):
+    def __init__(self, ote_dataset: DatasetEntity, labels: List[LabelEntity], pipeline, test_mode: bool = False):
         self.ote_dataset = ote_dataset
         self.labels = labels
         self.CLASSES = list(label.name for label in labels)
