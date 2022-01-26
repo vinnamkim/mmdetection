@@ -176,7 +176,7 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
             height = dataset_item.height
 
             shapes = []
-            if self._task_type == TaskType.DETECTION and isinstance(all_results, list):
+            if self._task_type == TaskType.DETECTION:
                 for label_idx, detections in enumerate(all_results):
                     for i in range(detections.shape[0]):
                         probability = float(detections[i, 4])
@@ -195,7 +195,7 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
                         shapes.append(Annotation(
                             Rectangle(x1=coords[0], y1=coords[1], x2=coords[2], y2=coords[3]),
                             labels=assigned_label))
-            elif self._task_type == TaskType.COUNTING and isinstance(all_results, tuple):
+            elif self._task_type == TaskType.COUNTING:
                 box_results, mask_results = all_results
                 for label_idx, masks in enumerate(mask_results):
                     probs = box_results[label_idx][:, 4]
@@ -214,19 +214,19 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
                             contour = list(contour)
                             if len(contour) <= 2 or probs[i] < confidence_threshold:
                                 continue
-                            points = [
-                                Point(
-                                  x=point[0][0] / width,
-                                  y=point[0][1] / height) for point in contour]
+                            points = [Point(
+                                          x=point[0][0] / width,
+                                          y=point[0][1] / height) for
+                                          point in contour]
                             shapes.append(Annotation(
-                              Polygon(points=points),
-                              labels=[
-                                ScoredLabel(self._labels[label_idx],
-                                probability=probs[i])],
+                                Polygon(points=points),
+                                labels=[
+                                    ScoredLabel(self._labels[label_idx],
+                                                probability=probs[i])],
                               id=label_idx,))
             else:
                 raise RuntimeError(
-                  f"Unknown prediction results type: {type(all_results)}")
+                    f"Detection results assignment not implemented for task: {self._task_type}")
 
             dataset_item.append_annotations(shapes)
 

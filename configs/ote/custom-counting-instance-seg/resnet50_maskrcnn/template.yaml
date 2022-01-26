@@ -1,10 +1,10 @@
 # Description.
-model_template_id: Custom_Instance_Segmentation_MaskRCNN-ResNet50
+model_template_id: Custom_Counting_Instance_Segmentation-MaskRCNN-ResNet50
 name: MaskRCNN-ResNet50
 task_type: COUNTING
 task_family: VISION
 instantiation: "CLASS"
-summary: MaskRCNN with ResNet50 backbone.
+summary: Counting algorithm provides counting of objects and object instance masks. This model is based on MaskRCNN-ResNet50 which gives accurate predictions but slower during training and inference. 
 application: ~
 
 # Algo backend.
