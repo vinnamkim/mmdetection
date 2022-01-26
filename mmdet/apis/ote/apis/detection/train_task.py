@@ -119,21 +119,12 @@ class OTEDetectionTrainingTask(OTEDetectionInferenceTask, ITrainingTask):
         learning_curves = defaultdict(OTELoggerHook.Curve)
         training_config = prepare_for_training(config, train_dataset, val_dataset, time_monitor, learning_curves)
         self._training_work_dir = training_config.work_dir
-        
-        default_args = None
-        if self._task_type == TaskType.COUNTING:
-            default_args={'with_mask': True}
-        
-        mm_train_dataset = build_dataset(training_config.data.train, default_args)
+
+        mm_train_dataset = build_dataset(training_config.data.train)
         self._is_training = True
         self._model.train()
         logger.info('Start training')
-        train_detector(
-          model=self._model,
-          dataset=mm_train_dataset,
-          cfg=training_config,
-          validate=True,
-          default_args=copy.copy(default_args))
+        train_detector(model=self._model, dataset=mm_train_dataset, cfg=training_config, validate=True)
         logger.info('Training completed')
 
         # Check for stop signal when training has stopped. If should_stop is true, training was cancelled and no new

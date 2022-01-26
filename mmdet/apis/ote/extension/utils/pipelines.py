@@ -112,8 +112,7 @@ class LoadAnnotationFromOTEDataset:
     def __call__(self, results):
         dataset_item = results['dataset_item']
         label_list = results['ann_info']['label_list']
-        ann_info = get_annotation_mmdet_format(
-            dataset_item, label_list, self.with_mask)
+        ann_info = get_annotation_mmdet_format(dataset_item, label_list)
         if self.with_bbox:
             results = self._load_bboxes(results, ann_info)
             if results is None or len(results['gt_bboxes']) == 0:

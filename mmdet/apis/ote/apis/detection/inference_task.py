@@ -281,10 +281,7 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
       task_type: Optional[TaskType] = TaskType.DETECTION) -> Tuple[List, float]:
         model.eval()
         test_config = prepare_for_testing(config, dataset)
-        default_args = None
-        if task_type == TaskType.COUNTING:
-            default_args={'with_mask': True}
-        mm_val_dataset = build_dataset(test_config.data.test, default_args)
+        mm_val_dataset = build_dataset(test_config.data.test)
         batch_size = 1
         mm_val_dataloader = build_dataloader(mm_val_dataset,
                                              samples_per_gpu=batch_size,
