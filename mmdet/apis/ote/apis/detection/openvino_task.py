@@ -183,19 +183,17 @@ class OpenVINODetectionTask(IDeploymentTask, IInferenceTask, IEvaluationTask, IO
         _hparams = copy.deepcopy(self.hparams)
         self.confidence_threshold = float(np.frombuffer(self.model.get_data("confidence_threshold"), dtype=np.float32)[0])
         _hparams.postprocessing.confidence_threshold = self.confidence_threshold
+        args = [
+            _hparams,
+            self.task_environment.label_schema,
+            self.model.get_data("openvino.xml"),
+            self.model.get_data("openvino.bin"),
+        ]
         if self.task_type == TaskType.DETECTION:
-            return OpenVINODetectionInferencer(_hparams,
-                                              self.task_environment.label_schema,
-                                              self.model.get_data("openvino.xml"),
-                                              self.model.get_data("openvino.bin"))
-        elif self.task_type == TaskType.COUNTING:
-            return OpenVINOMaskInferencer(
-              _hparams,
-              self.task_environment.label_schema,
-              self.model.get_data("openvino.xml"),
-              self.model.get_data("openvino.bin"))
-        else:
-            raise RuntimeError(f"Unknown OpenVINO Inferencer TaskType: {self.task_type}")
+            return OpenVINODetectionInferencer(*args)
+        if self.task_type == TaskType.COUNTING:
+            return OpenVINOMaskInferencer(*args)
+        raise RuntimeError(f"Unknown OpenVINO Inferencer TaskType: {self.task_type}")
 
     def infer(self, dataset: DatasetEntity, inference_parameters: Optional[InferenceParameters] = None) -> DatasetEntity:
         logger.info('Start OpenVINO inference')
