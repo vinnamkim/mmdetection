@@ -196,13 +196,10 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
                             Rectangle(x1=coords[0], y1=coords[1], x2=coords[2], y2=coords[3]),
                             labels=assigned_label))
             elif self._task_type == TaskType.COUNTING:
-                box_results, mask_results = all_results
-                for label_idx, masks in enumerate(mask_results):
-                    probs = box_results[label_idx][:, 4]
-                    for i, mask in enumerate(masks):
+                for label_idx, (boxes, masks) in enumerate(zip(*all_results)):
+                    for mask, probability in zip(masks, boxes[:, 4]):
                         mask = mask.astype(np.uint8)
-                        contours, hierarchies = cv2.findContours(
-                          mask, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+                        contours, hierarchies = cv2.findContours(mask, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
                         if hierarchies is None:
                             continue
                         for contour, hierarchy in zip(contours, hierarchies[0]):
@@ -212,18 +209,11 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
                             # rect = cv2.minAreaRect(contour)
                             # box = cv2.boxPoints(rect)
                             contour = list(contour)
-                            if len(contour) <= 2 or probs[i] < confidence_threshold:
+                            if len(contour) <= 2 or probability < confidence_threshold:
                                 continue
-                            points = [Point(
-                                          x=point[0][0] / width,
-                                          y=point[0][1] / height) for
-                                          point in contour]
-                            shapes.append(Annotation(
-                                Polygon(points=points),
-                                labels=[
-                                    ScoredLabel(self._labels[label_idx],
-                                                probability=probs[i])],
-                              id=label_idx,))
+                            points = [Point(x=point[0][0] / width, y=point[0][1] / height) for point in contour]
+                            labels = [ScoredLabel(self._labels[label_idx], probability=probability)]
+                            shapes.append(Annotation(Polygon(points=points), labels=labels, id=label_idx))
             else:
                 raise RuntimeError(
                     f"Detection results assignment not implemented for task: {self._task_type}")
