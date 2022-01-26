@@ -14,5 +14,5 @@ tqdm
 onnx>=1.7.0
 onnxoptimizer
 onnxruntime>=1.1.2
-Shapely==1.7.1
+Shapely==1.8.0
 editdistance
