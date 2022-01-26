@@ -310,7 +310,7 @@ class CustomDataset(Dataset):
             scale_ranges (list[tuple] | None): Scale ranges for evaluating mAP.
                 Default: None.
         """
-
+        # TODO[EUGENE]: ALLOW MULTIPLE METRICS
         if not isinstance(metric, str):
             assert len(metric) == 1
             metric = metric[0]
@@ -320,19 +320,28 @@ class CustomDataset(Dataset):
         annotations = [self.get_ann_info(i) for i in range(len(self))]
         eval_results = OrderedDict()
         iou_thrs = [iou_thr] if isinstance(iou_thr, float) else iou_thr
-        # EUGENE: ADD MAE METRIC
+        # TODO[EUGENE]: ADD MAE METRIC
         if metric == 'mAP':
             assert isinstance(iou_thrs, list)
             mean_aps = []
             for iou_thr in iou_thrs:
                 print_log(f'\n{"-" * 15}iou_thr: {iou_thr}{"-" * 15}')
-                mean_ap, _ = eval_map(
-                    results,
-                    annotations,
-                    scale_ranges=scale_ranges,
-                    iou_thr=iou_thr,
-                    dataset=self.CLASSES,
-                    logger=logger)
+                if isinstance(results[0], tuple):
+                    mean_ap, _ = eval_segm(
+                        results,
+                        annotations,
+                        iou_thr=iou_thr,
+                        dataset=self.CLASSES,
+                        logger=logger,
+                        metric=metric)
+                else:
+                    mean_ap, _ = eval_map(
+                        results,
+                        annotations,
+                        scale_ranges=scale_ranges,
+                        iou_thr=iou_thr,
+                        dataset=self.CLASSES,
+                        logger=logger)
                 mean_aps.append(mean_ap)
                 eval_results[f'AP{int(iou_thr * 100):02d}'] = round(mean_ap, 3)
             eval_results['mAP'] = sum(mean_aps) / len(mean_aps)
@@ -348,17 +357,17 @@ class CustomDataset(Dataset):
                 for i, num in enumerate(proposal_nums):
                     eval_results[f'AR@{num}'] = ar[i]
         elif metric == 'mIoU':
-            assert isinstance(results[0], tuple)
+            assert isinstance(results[0], tuple), "Result format not supported"
             mean_mious = []
             for iou_thr in iou_thrs:
                 print_log(f'\n{"-" * 15}iou_thr: {iou_thr}{"-" * 15}')
                 mean_iou, _ = eval_segm(
                     results,
                     annotations,
-                    scale_ranges=scale_ranges,
                     iou_thr=iou_thr,
                     dataset=self.CLASSES,
-                    logger=logger)
+                    logger=logger,
+                    metric=metric)
                 mean_mious.append(mean_iou)
                 eval_results[f'mIoU{int(iou_thr * 100):02d}'] = round(mean_iou, 3)
             eval_results['mIoU'] = sum(mean_mious) / len(mean_mious)

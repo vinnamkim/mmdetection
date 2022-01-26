@@ -11,108 +11,15 @@ from .class_names import get_classes
 from .mean_ap import average_precision
 
 
-def tpfpmiou_func(
-        det_masks: List[Dict],
-        gt_masks: List[Dict],
-        cls_scores,
-        iou_thr=0.5):
-    # EUGENE: DOCSTRING
-    """Check if detected bboxes are true positive or false positive.
-
-    Args:
-        det_masks: Detected masks of this image.
-        gt_masks: GT bboxes of this image, of shape (n, 4).
-        cls_scores: (n, 1)
-        iou_thr (float): IoU threshold to be considered as matched.
-            Default: 0.5.
-
-    Returns:
-        tuple[np.ndarray]: (tp, fp) whose elements are 0 and 1. The shape of
-            each array is (num_scales, m).
-    """
-    num_dets = len(det_masks)
-    num_gts = len(gt_masks)
-
-    tp = np.zeros(num_dets, dtype=np.float32)
-    fp = np.zeros(num_dets, dtype=np.float32)
-    gt_covered_iou = np.zeros(num_gts, dtype=np.float32)
-
-    if len(gt_masks) == 0:
-        fp[...] = 1
-        return tp, fp, 0.0
-    if num_dets == 0:
-        return tp, fp, 0.0
-
-    ious = mask_util.iou(det_masks, gt_masks, len(gt_masks) * [0])
-    # for each det, the max iou with all gts
-    ious_max = ious.max(axis=1)
-    # for each det, which gt overlaps most with it
-    ious_argmax = ious.argmax(axis=1)
-    # sort all dets in descending order by scores
-    sort_inds = np.argsort(-cls_scores)
-
-    gt_covered = np.zeros(num_gts, dtype=bool)
-    # if no area range is specified, gt_area_ignore is all False
-    for i in sort_inds:
-        if ious_max[i] >= iou_thr:
-            matched_gt = ious_argmax[i]
-            if not gt_covered[matched_gt]:
-                gt_covered[matched_gt] = True
-                gt_covered_iou[matched_gt] = ious_max[i]
-                tp[i] = 1
-            else:
-                fp[i] = 1
-            # otherwise ignore this detected bbox, tp = 0, fp = 0
-        else:
-            fp[i] = 1
-    return tp, fp, np.mean(gt_covered_iou)
-
-
-def get_cls_results(det_results, annotations, class_id):
-    # EUGENE: DOCSTRING
-    cls_scores = [img_res[0][class_id][..., -1] for img_res in det_results]
-
-    # cls_dets = [img_res[1][class_id] for img_res in det_results]
-    cls_dets = []
-    for i, det in enumerate(det_results):
-        det_masks = det[1][class_id]
-        cls_dets.append([])
-        for det_mask in det_masks:
-            if isinstance(det_mask, np.ndarray):
-                cls_dets[i].append(
-                    mask_util.encode(
-                        np.array(
-                            det_mask[:, :, np.newaxis], order='F', dtype='uint8'))[0])
-            else:
-                cls_dets[i].append(det_mask)
-
-    cls_gts = []
-    for ann in annotations:
-        gt_inds = ann['labels'] == class_id
-        if isinstance(ann['masks'], PolygonMasks):
-            masks = ann['masks'].to_ndarray()[gt_inds]
-            encoded_masks = [
-                mask_util.encode(
-                    np.array(m[:, :, np.newaxis], order='F', dtype='uint8')
-                )[0] for m in masks]
-            cls_gts.append(encoded_masks)
-        elif isinstance(ann['masks'], list):
-            cls_gts.append([])
-        else:
-            raise RuntimeError("UNKNOWN ANNOTATION FORMAT")
-
-    return cls_dets, cls_gts, cls_scores
-
-
 def print_map_summary(mean_ap,
                       results,
                       dataset=None,
                       scale_ranges=None,
                       logger=None):
-    """Print mAP and results of each class.
+    """Print mAP/mIoU and results of each class.
 
-    A table will be printed to show the gts/dets/recall/AP of each class and
-    the mAP.
+    A table will be printed to show the gts/dets/recall/AP/IoU of each class 
+    and the mAP/mIoU.
 
     Args:
         mean_ap (float): Calculated from `eval_map()`.
@@ -175,15 +82,144 @@ def print_map_summary(mean_ap,
         print_log('\n' + table.table, logger=logger)
 
 
+def tpfpmiou_func(
+        det_masks: List[Dict],
+        gt_masks: List[Dict],
+        cls_scores,
+        iou_thr=0.5):
+    """ Calculate Mean Intersection and Union (mIoU) and AP across
+    predicted masks and GT masks.
+
+    Args:
+        det_masks: Detected masks of this image, with list size (m)
+        gt_masks: GT masks of this image, with list size (n).
+        cls_scores: (n, 1)
+        iou_thr (float): IoU threshold to be considered as matched.
+            Default: 0.5.
+
+    Returns:
+        tuple[np.ndarray, np.ndarray, float]:
+            <tp, fp> with elements of 0 and 1, the shape of each array is (m).
+            <gt_covered_iou>: the average IoU between predicted mask and GT mask
+    """
+    num_dets = len(det_masks)
+    num_gts = len(gt_masks)
+
+    tp = np.zeros(num_dets, dtype=np.float32)
+    fp = np.zeros(num_dets, dtype=np.float32)
+    gt_covered_iou = np.zeros(num_gts, dtype=np.float32)
+
+    if len(gt_masks) == 0:
+        fp[...] = 1
+        return tp, fp, 0.0
+    if num_dets == 0:
+        return tp, fp, 0.0
+
+    ious = mask_util.iou(det_masks, gt_masks, len(gt_masks) * [0])
+    # for each det, the max iou with all gts
+    ious_max = ious.max(axis=1)
+    # for each det, which gt overlaps most with it
+    ious_argmax = ious.argmax(axis=1)
+    # sort all dets in descending order by scores
+    sort_inds = np.argsort(-cls_scores)
+
+    gt_covered = np.zeros(num_gts, dtype=bool)
+    # if no area range is specified, gt_area_ignore is all False
+    for i in sort_inds:
+        if ious_max[i] >= iou_thr:
+            matched_gt = ious_argmax[i]
+            if not gt_covered[matched_gt]:
+                gt_covered[matched_gt] = True
+                gt_covered_iou[matched_gt] = ious_max[i]
+                tp[i] = 1
+            else:
+                fp[i] = 1
+            # otherwise ignore this detected bbox, tp = 0, fp = 0
+        else:
+            fp[i] = 1
+    return tp, fp, np.mean(gt_covered_iou)
+
+
+def get_cls_results(det_results, annotations, class_id):
+    """Get det results and gt information of a certain class.
+
+    Args:
+        det_results (list[tuple]): Same as `eval_segm()`.
+        annotations (list[dict]): Same as `eval_segm()`.
+        class_id (int): ID of a specific class.
+
+    Returns:
+        tuple[list[list[dict]], list[list[dict]], list[np.ndarray]]:
+          <detected masks>: list[dict] includes all the predicted RLE masks
+              for an image.
+          <gt masks>: list[dict] includes all the GT RLE masks for an image
+          <detected box scores>: each array in the list describes the predicted
+              box scores for an image.
+    """
+    cls_scores = [img_res[0][class_id][..., -1] for img_res in det_results]
+    cls_dets = []
+    for i, det in enumerate(det_results):
+        det_masks = det[1][class_id]
+        cls_dets.append([])
+        for det_mask in det_masks:
+            if isinstance(det_mask, np.ndarray):
+                cls_dets[i].append(
+                    mask_util.encode(
+                        np.array(
+                            det_mask[:, :, np.newaxis], order='F', dtype='uint8'))[0])
+            else:
+                cls_dets[i].append(det_mask)
+
+    cls_gts = []
+    for ann in annotations:
+        gt_inds = ann['labels'] == class_id
+        if isinstance(ann['masks'], PolygonMasks):
+            masks = ann['masks'].to_ndarray()[gt_inds]
+            encoded_masks = [
+                mask_util.encode(
+                    np.array(m[:, :, np.newaxis], order='F', dtype='uint8')
+                )[0] for m in masks]
+            cls_gts.append(encoded_masks)
+        elif isinstance(ann['masks'], list):
+            cls_gts.append([])
+        else:
+            raise RuntimeError("Unknown annotation format")
+
+    return cls_dets, cls_gts, cls_scores
+
+
 def eval_segm(
         det_results,
         annotations,
-        scale_ranges=None,
         iou_thr=0.5,
         dataset=None,
         logger=None,
-        nproc=4):
-    # EUGENE: DOCSTRING
+        nproc=4,
+        metric='mAP'):
+    """Evaluate mAP/mIoU of a dataset.
+
+    Args:
+        det_results (list[tuple[list, list]]): [[cls1_det, cls2_det, ...], ...].
+            The outer list indicates images, and the inner tuple indicates box
+            and mask prediction. Each list of a predicted type (box/mask)
+            includes the per-class detection of that type.
+        annotations (list[dict]): Ground truth annotations where each item of
+            the list indicates an image. Keys of annotations are:
+            - `bboxes`: numpy array of shape (n, 4)
+            - `labels`: numpy array of shape (n, )
+            - `masks`: numpy array of shape (k, 4)
+        iou_thr (float): IoU threshold to be considered as matched.
+            Default: 0.5.
+        dataset (list[str] | str | None): Dataset name or dataset classes,
+            there are minor differences in metrics for different datsets, e.g.
+            "voc07", "imagenet_det", etc. Default: None.
+        logger (logging.Logger | str | None): The way to print the mAP
+            summary. See `mmcv.utils.print_log()` for details. Default: None.
+        nproc (int): Processes used for computing tpfpmiou_func. Default: 4.
+
+    Returns:
+        tuple: (mIoU, [dict, dict, ...])
+    """
     assert len(det_results) == len(annotations)
 
     num_imgs = len(det_results)
@@ -244,4 +280,4 @@ def eval_segm(
     print_map_summary(
         mean_ap, eval_results, dataset, None, logger=logger)
 
-    return metrics['mIoU'], eval_results
+    return metrics[metric], eval_results

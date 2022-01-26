@@ -47,7 +47,7 @@ training_targets:
   - GPU
   - CPU
 
-# EUGENE: WIP
+# TODO[EUGENE]: WIP
 # Stats.
 gigaflops: 533.8
 size: 177.9

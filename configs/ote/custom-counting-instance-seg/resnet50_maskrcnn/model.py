@@ -162,7 +162,7 @@ runner = dict(type='EpochRunnerWithCancel', max_epochs=300)
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
 work_dir = 'output'
-# EUGENE: UPLOAD TO openvinotoolkit storage repo
+# TODO[EUGENE]: UPLOAD TO openvinotoolkit storage repo
 load_from = 'https://download.openmmlab.com/mmdetection/v2.0/mask_rcnn/mask_rcnn_r50_fpn_mstrain-poly_3x_coco/mask_rcnn_r50_fpn_mstrain-poly_3x_coco_20210524_201154-21b550bb.pth'
 resume_from = None
 workflow = [('train', 1)]

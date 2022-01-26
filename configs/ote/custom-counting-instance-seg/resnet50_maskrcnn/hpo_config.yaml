@@ -1,4 +1,4 @@
-metric: mAP
+metric: mIoU
 search_algorithm: smbo
 early_stop: None
 hp_space:
