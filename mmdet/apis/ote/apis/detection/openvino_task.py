@@ -224,8 +224,8 @@ class OpenVINODetectionTask(IDeploymentTask, IInferenceTask, IEvaluationTask, IO
         work_dir = os.path.dirname(demo.__file__)
         model_file = inspect.getfile(type(self.inferencer.model))
         parameters = {}
-        parameters['type_of_model'] = 'ssd'
-        parameters['converter_type'] = 'DETECTION'
+        parameters['type_of_model'] = self.inferencer.model.__model__
+        parameters['converter_type'] = str(self.task_type)
         parameters['model_parameters'] = self.inferencer.configuration
         parameters['model_parameters']['labels'] = LabelSchemaMapper.forward(self.task_environment.label_schema)
         name_of_package = "demo_package"
