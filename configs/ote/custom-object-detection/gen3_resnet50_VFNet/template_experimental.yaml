@@ -4,7 +4,8 @@ name: VFNet
 task_type: DETECTION
 task_family: VISION
 instantiation: "CLASS"
-summary: VFNet with ResNet-50 backbone.
+summary: Model achieves the best accuracy but doubles the training time comparied to ATSS and has the slowest 
+  inference speed.
 application:
   ~
 
