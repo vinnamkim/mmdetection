@@ -4,7 +4,8 @@ name: SSD
 task_type: DETECTION
 task_family: VISION
 instantiation: "CLASS"
-summary: SSD with MobileNetV2 backbone.
+summary: Model with fastest inference speed and training time. Works better on simple datasets with large and 
+  distinguishable objects.
 application:
   ~
 
