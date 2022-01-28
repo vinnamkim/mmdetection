@@ -238,21 +238,20 @@ def set_data_classes(config: Config, labels: List[LabelEntity]):
         config.data[subset].labels = labels
 
     # Set proper number of classes in model's detection heads.
+    head_names = ('mask_head', 'bbox_head', 'segm_head')
     num_classes = len(labels)
     if 'roi_head' in config.model:
-        if isinstance(config.model.roi_head.bbox_head, List):
-            for head in config.model.roi_head.bbox_head:
-                head.num_classes = num_classes
-        else:
-            config.model.roi_head.bbox_head.num_classes = num_classes
-
-        if isinstance(config.model.roi_head.mask_head, List):
-            for head in config.model.roi_head.mask_head:
-                head.num_classes = num_classes
-        else:
-            config.model.roi_head.mask_head.num_classes = num_classes
-    elif 'bbox_head' in config.model:
-        config.model.bbox_head.num_classes = num_classes
+        for head_name in head_names:
+            if head_name in config.model.roi_head:
+                if isinstance(config.model.roi_head[head_name], List):
+                    for head in config.model.roi_head[head_name]:
+                        head.num_classes = num_classes
+                else:
+                    config.model.roi_head[head_name].num_classes = num_classes
+    else:
+        for head_name in head_names:
+            if head_name in config.model:
+                config.model[head_name].num_classes = num_classes
     # FIXME. ?
     # self.config.model.CLASSES = label_names
 

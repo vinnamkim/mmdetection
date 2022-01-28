@@ -49,6 +49,7 @@ from ote_sdk.entities.train_parameters import TrainParameters
 from ote_sdk.tests.test_helpers import generate_random_annotated_image
 from ote_sdk.usecases.tasks.interfaces.export_interface import ExportType, IExportTask
 from ote_sdk.usecases.tasks.interfaces.optimization_interface import OptimizationType
+from ote_sdk.utils.shape_factory import ShapeFactory
 
 from mmdet.apis.ote.apis.detection import (OpenVINODetectionTask, OTEDetectionConfig, OTEDetectionInferenceTask,
                                            OTEDetectionNNCFTask, OTEDetectionTrainingTask)
@@ -119,56 +120,6 @@ class API(unittest.TestCase):
             number_of_images=500,
             task_type=TaskType.DETECTION):
 
-        def shape2bbox(shapes):
-            # Convert all shapes to bounding boxes
-            box_shapes = []
-            for shape in shapes:
-                shape_labels = shape.get_labels(include_empty=True)
-                shape = shape.shape
-
-                if isinstance(shape, (Rectangle, Ellipse)):
-                    box = np.array(
-                        [shape.x1, shape.y1, shape.x2, shape.y2], dtype=float)
-                elif isinstance(shape, Polygon):
-                    box = np.array([shape.min_x, shape.min_y,
-                                   shape.max_x, shape.max_y], dtype=float)
-                box = box.clip(0, 1)
-                box_shapes.append(
-                    Annotation(
-                        Rectangle(
-                            x1=box[0],
-                            y1=box[1],
-                            x2=box[2],
-                            y2=box[3]),
-                        labels=shape_labels))
-            return box_shapes
-
-        def shape2poly(shapes):
-            # Convert all shapes to polygon
-            polygon_shapes = []
-            for shape in shapes:
-                shape_labels = shape.get_labels(include_empty=True)
-                shape = shape.shape
-                if isinstance(shape, Ellipse):
-                    polygon = Polygon(
-                        points=[
-                            Point(*point) for point in shape.get_evenly_distributed_ellipse_coordinates()
-                        ]
-                    )
-                elif isinstance(shape, Rectangle):
-                    polygon = Polygon(
-                        points=[
-                            Point(x=shape.x1, y=shape.y1),
-                            Point(x=shape.x2, y=shape.y1),
-                            Point(x=shape.x2, y=shape.y2),
-                            Point(x=shape.x1, y=shape.y2),
-                        ]
-                    )
-                else:
-                    polygon = shape
-                polygon_shapes.append(Annotation(polygon, labels=shape_labels))
-            return polygon_shapes
-
         labels_names = ('rectangle', 'ellipse', 'triangle')
         labels_schema = generate_label_schema(labels_names)
         labels_list = labels_schema.get_labels(False)
@@ -178,7 +129,7 @@ class API(unittest.TestCase):
         warnings.filterwarnings('ignore', message='.* coordinates .* are out of bounds.*')
         items = []
         for i in range(0, number_of_images):
-            image_numpy, shapes = generate_random_annotated_image(
+            image_numpy, annos = generate_random_annotated_image(
                 image_width=640,
                 image_height=480,
                 labels=labels_list,
@@ -186,17 +137,18 @@ class API(unittest.TestCase):
                 min_size=50,
                 max_size=100,
                 random_seed=None)
-            # Convert all shapes to bounding boxes
-            if task_type == TaskType.COUNTING:
-                anno_shapes = shape2poly(shapes)
-            else:
-                anno_shapes = shape2bbox(shapes)
+            # Convert shapes according to task
+            for anno in annos:
+                if task_type == TaskType.INSTANCE_SEGMENTATION:
+                    anno.shape = ShapeFactory.shape_as_polygon(anno.shape)
+                else:
+                    anno.shape = ShapeFactory.shape_as_rectangle(anno.shape)
 
             image = Image(data=image_numpy)
-            annotation = AnnotationSceneEntity(
+            annotation_scene = AnnotationSceneEntity(
                 kind=AnnotationSceneKind.ANNOTATION,
-                annotations=anno_shapes)
-            items.append(DatasetItemEntity(media=image, annotation_scene=annotation))
+                annotations=annos)
+            items.append(DatasetItemEntity(media=image, annotation_scene=annotation_scene))
         warnings.resetwarnings()
 
         rng = random.Random()
@@ -584,4 +536,4 @@ class API(unittest.TestCase):
     def test_training_maskrcnn_resnet50(self):
         self.end_to_end(osp.join('configs', 'ote',
                         'custom-counting-instance-seg', 'resnet50_maskrcnn'),
-                        task_type=TaskType.COUNTING)
+                        task_type=TaskType.INSTANCE_SEGMENTATION)

@@ -44,7 +44,7 @@ def get_annotation_mmdet_format(
     # load annotations for item
     gt_bboxes = []
     gt_labels = []
-    polygons = []
+    gt_polygons = []
 
     label_idx = {label.id: i for i, label in enumerate(labels)}
 
@@ -66,14 +66,14 @@ def get_annotation_mmdet_format(
             for p in annotation.shape.points:
                 points.extend([p.x * width, p.y * height])
             assert len(points) % 2 == 0
-            polygons.append([np.array(points)])
+            gt_polygons.append([np.array(points)])
 
     if len(gt_bboxes) > 0:
         ann_info = dict(
             bboxes=np.array(gt_bboxes, dtype=np.float32).reshape(-1, 4),
             labels=np.array(gt_labels, dtype=int),
             masks=PolygonMasks(
-                polygons, height=height, width=width) if polygons else [])
+                gt_polygons, height=height, width=width) if gt_polygons else [])
     else:
         ann_info = dict(
             bboxes=np.zeros((0, 4), dtype=np.float32),

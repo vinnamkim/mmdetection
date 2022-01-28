@@ -191,7 +191,7 @@ class OpenVINODetectionTask(IDeploymentTask, IInferenceTask, IEvaluationTask, IO
         ]
         if self.task_type == TaskType.DETECTION:
             return OpenVINODetectionInferencer(*args)
-        if self.task_type == TaskType.COUNTING:
+        if self.task_type == TaskType.INSTANCE_SEGMENTATION:
             return OpenVINOMaskInferencer(*args)
         raise RuntimeError(f"Unknown OpenVINO Inferencer TaskType: {self.task_type}")
 

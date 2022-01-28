@@ -195,7 +195,7 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
                         shapes.append(Annotation(
                             Rectangle(x1=coords[0], y1=coords[1], x2=coords[2], y2=coords[3]),
                             labels=assigned_label))
-            elif self._task_type == TaskType.COUNTING:
+            elif self._task_type == TaskType.INSTANCE_SEGMENTATION:
                 for label_idx, (boxes, masks) in enumerate(zip(*all_results)):
                     for mask, probability in zip(masks, boxes[:, 4]):
                         mask = mask.astype(np.uint8)
