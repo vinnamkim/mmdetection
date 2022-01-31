@@ -132,7 +132,7 @@ model = dict(
             mask_thr_binary=0.5)))
 
 cudnn_benchmark = True
-evaluation = dict(interval=1, metric='mIoU', save_best='mIoU')
+evaluation = dict(interval=1, metric='mAP', save_best='mAP', iou_thr=[0.5 , 0.55, 0.6 , 0.65, 0.7 , 0.75, 0.8 , 0.85, 0.9, 0.95])
 optimizer = dict(
     type='SGD',
     lr=0.01,
@@ -142,7 +142,7 @@ optimizer_config = dict()
 
 lr_config = dict(
     policy='ReduceLROnPlateau',
-    metric='mIoU',
+    metric='mAP',
     patience=5,
     iteration_patience=300,
     interval=1,
@@ -171,7 +171,7 @@ custom_hooks = [
         type='EarlyStoppingHook',
         patience=10,
         iteration_patience=0,
-        metric='mIoU',
+        metric='mAP',
         interval=1,
         priority=75)
 ]

@@ -301,9 +301,16 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
                     result = eval_model(return_loss=False, rescale=True, **data)
                 eval_predictions.extend(result)
 
+        # hard-code way to remove EvalHook args
+        for key in [
+                'interval', 'tmpdir', 'start', 'gpu_collect', 'save_best',
+                'rule', 'dynamic_intervals'
+        ]:
+            config.evaluation.pop(key, None)
+
         metric = None
         if eval:
-            metric = mm_val_dataset.evaluate(eval_predictions, metric=metric_name)[metric_name]
+            metric = mm_val_dataset.evaluate(eval_predictions, **config.evaluation)[metric_name]
 
         assert len(eval_predictions) == len(feature_vectors), f'{len(eval_predictions)} != {len(feature_vectors)}'
         eval_predictions = zip(eval_predictions, feature_vectors)
