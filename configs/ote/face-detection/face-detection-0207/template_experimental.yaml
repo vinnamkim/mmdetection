@@ -31,7 +31,7 @@ hyper_parameters:
         default_value: 70
     nncf_optimization:
       enable_quantization:
-        default_value: false
+        default_value: true
       enable_pruning:
         default_value: false
       maximal_accuracy_degradation:

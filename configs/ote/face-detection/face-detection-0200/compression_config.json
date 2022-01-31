@@ -13,11 +13,8 @@
         "optimizer": {
             "lr": 0.00025
         },
-        "lr_config": {
-            "policy": "fixed"
-        },
         "runner": {
-           "max_epochs": 2
+            "max_epochs": 2
         },
         "nncf_config": {
             "compression": [
@@ -40,8 +37,8 @@
             "lr": 0.0025
         },
         "runner": {
-           "max_epochs": 50
-       },
+            "max_epochs": 50
+        },
         "nncf_config": {
             "compression": [
                 {
@@ -67,7 +64,7 @@
             "step": [40, 60]
         },
         "runner": {
-           "max_epochs": 50
+            "max_epochs": 50
         },
         "nncf_config": {
             "compression": [

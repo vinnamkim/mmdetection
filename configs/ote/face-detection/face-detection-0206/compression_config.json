@@ -16,11 +16,12 @@
             "momentum": 0.9,
             "weight_decay": 0.0001
         },
-        "lr_config": {
-            "_delete_": true,
-            "policy": "fixed"
+        "runner": {
+            "max_epochs": 1
         },
-        "total_epochs": 1,
+         "data": {
+            "samples_per_gpu": 2
+        },
         "nncf_config": {
             "compression": [
                 {
