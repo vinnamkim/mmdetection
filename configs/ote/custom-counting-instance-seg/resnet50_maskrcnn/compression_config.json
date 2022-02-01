@@ -2,7 +2,7 @@
     "base": {
         "find_unused_parameters": true,
         "nncf_config": {
-            "target_metric_name": "mIoU",
+            "target_metric_name": "mAP",
             "input_info": {
                 "sample_size": [1, 3, 1344, 800]
             },
