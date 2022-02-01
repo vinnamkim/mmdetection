@@ -51,7 +51,7 @@ def get_annotation_mmdet_format(
     for annotation in dataset_item.get_annotations(labels=labels, include_empty=False):
 
         box = ShapeFactory.shape_as_rectangle(annotation.shape)
-
+        polygon = ShapeFactory.shape_as_polygon(annotation.shape)
         class_indices = [
             label_idx[label.id]
             for label in annotation.get_labels(include_empty=False)
@@ -60,13 +60,8 @@ def get_annotation_mmdet_format(
 
         n = len(class_indices)
         gt_bboxes.extend([[box.x1 * width, box.y1 * height, box.x2 * width, box.y2 * height] for _ in range(n)])
+        gt_polygons.append([np.array([p for point in polygon.points for p in [point.x * width, point.y * height]])])
         gt_labels.extend(class_indices)
-        if hasattr(annotation.shape, "points"):
-            points = []
-            for p in annotation.shape.points:
-                points.extend([p.x * width, p.y * height])
-            assert len(points) % 2 == 0
-            gt_polygons.append([np.array(points)])
 
     if len(gt_bboxes) > 0:
         ann_info = dict(
