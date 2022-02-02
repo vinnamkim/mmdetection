@@ -48,7 +48,11 @@ from ote_sdk.entities.task_environment import TaskEnvironment
 from ote_sdk.serialization.label_mapper import LabelSchemaMapper, label_schema_to_bytes
 from ote_sdk.usecases.evaluation.metrics_helper import MetricsHelper
 from ote_sdk.usecases.exportable_code.inference import BaseInferencer
-from ote_sdk.usecases.exportable_code.prediction_to_annotation_converter import DetectionBoxToAnnotationConverter, MaskToAnnotationConverter
+from ote_sdk.usecases.exportable_code.prediction_to_annotation_converter import (
+    DetectionBoxToAnnotationConverter,
+    MaskToAnnotationConverter,
+    RotatedRectToAnnotationConverter,
+)
 from ote_sdk.usecases.exportable_code.utils import set_proper_git_commit_hash
 from ote_sdk.usecases.tasks.interfaces.deployment_interface import IDeploymentTask
 from ote_sdk.usecases.tasks.interfaces.evaluate_interface import IEvaluationTask
@@ -65,7 +69,26 @@ from .configuration import OTEDetectionConfig
 logger = get_root_logger()
 
 
-class OpenVINODetectionInferencer(BaseInferencer):
+class BaseInferencerWithConverter(BaseInferencer):
+
+    def __init__(self, configuration, model, converter) -> None:
+        self.configuration = configuration
+        self.model = model
+        self.converter = converter
+
+    def pre_process(self, image: np.ndarray) -> Tuple[Dict[str, np.ndarray], Dict[str, Any]]:
+        return self.model.preprocess(image)
+
+    def post_process(self, prediction: Dict[str, np.ndarray], metadata: Dict[str, Any]) -> AnnotationSceneEntity:
+        detections = self.model.postprocess(prediction, metadata)
+
+        return self.converter.convert_to_annotation(detections, metadata)
+
+    def forward(self, inputs: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
+        return self.model.infer_sync(inputs)
+
+
+class OpenVINODetectionInferencer(BaseInferencerWithConverter):
     def __init__(
         self,
         hparams: OTEDetectionConfig,
@@ -88,24 +111,15 @@ class OpenVINODetectionInferencer(BaseInferencer):
         """
 
         model_adapter = OpenvinoAdapter(create_core(), model_file, weight_file, device=device, max_num_requests=num_requests)
-        self.configuration = {**attr.asdict(hparams.postprocessing,
+        configuration = {**attr.asdict(hparams.postprocessing,
                               filter=lambda attr, value: attr.name not in ['header', 'description', 'type', 'visible_in_ui'])}
-        self.model = Model.create_model('ssd', model_adapter, self.configuration, preload=True)
-        self.converter = DetectionBoxToAnnotationConverter(label_schema)
+        model = Model.create_model('ssd', model_adapter, configuration, preload=True)
+        converter = DetectionBoxToAnnotationConverter(label_schema)
 
-    def pre_process(self, image: np.ndarray) -> Tuple[Dict[str, np.ndarray], Dict[str, Any]]:
-        return self.model.preprocess(image)
-
-    def post_process(self, prediction: Dict[str, np.ndarray], metadata: Dict[str, Any]) -> AnnotationSceneEntity:
-        detections = self.model.postprocess(prediction, metadata)
-
-        return self.converter.convert_to_annotation(detections, metadata)
-
-    def forward(self, inputs: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
-        return self.model.infer_sync(inputs)
+        super().__init__(configuration, model, converter)
 
 
-class OpenVINOMaskInferencer(BaseInferencer):
+class OpenVINOMaskInferencer(BaseInferencerWithConverter):
     def __init__(
         self,
         hparams: OTEDetectionConfig,
@@ -122,30 +136,55 @@ class OpenVINOMaskInferencer(BaseInferencer):
           device=device,
           max_num_requests=num_requests)
 
-        self.configuration = {
+        configuration = {
           **attr.asdict(
             hparams.postprocessing,
             filter=lambda attr, value: attr.name not in [
               'header', 'description', 'type', 'visible_in_ui'])}
 
-        self.model = Model.create_model(
+        model = Model.create_model(
           'maskrcnn',
           model_adapter,
           self.configuration,
           preload=True)
 
-        self.converter = MaskToAnnotationConverter(label_schema)
+        converter = MaskToAnnotationConverter(label_schema)
 
-    def pre_process(self, image: np.ndarray) -> Tuple[Dict[str, np.ndarray], Dict[str, Any]]:
-        return self.model.preprocess(image)
+        super().__init__(configuration, model, converter)
 
-    def post_process(self, prediction: Dict[str, np.ndarray], metadata: Dict[str, Any]) -> AnnotationSceneEntity:
-        detections = self.model.postprocess(prediction, metadata)
 
-        return self.converter.convert_to_annotation(detections, metadata)
+class OpenVINORotatedRectInferencer(BaseInferencerWithConverter):
+    def __init__(
+        self,
+        hparams: OTEDetectionConfig,
+        label_schema: LabelSchemaEntity,
+        model_file: Union[str, bytes],
+        weight_file: Union[str, bytes, None] = None,
+        device: str = "CPU",
+        num_requests: int = 1,
+    ):
+        model_adapter = OpenvinoAdapter(
+          create_core(),
+          model_file,
+          weight_file,
+          device=device,
+          max_num_requests=num_requests)
 
-    def forward(self, inputs: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
-        return self.model.infer_sync(inputs)
+        configuration = {
+          **attr.asdict(
+            hparams.postprocessing,
+            filter=lambda attr, value: attr.name not in [
+              'header', 'description', 'type', 'visible_in_ui'])}
+
+        model = Model.create_model(
+          'maskrcnn',
+          model_adapter,
+          configuration,
+          preload=True)
+
+        converter = RotatedRectToAnnotationConverter(label_schema)
+
+        super().__init__(configuration, model, converter)
 
 
 class OTEOpenVinoDataLoader(DataLoader):
@@ -193,6 +232,8 @@ class OpenVINODetectionTask(IDeploymentTask, IInferenceTask, IEvaluationTask, IO
             return OpenVINODetectionInferencer(*args)
         if self.task_type == TaskType.INSTANCE_SEGMENTATION:
             return OpenVINOMaskInferencer(*args)
+        if self.task_type == TaskType.ROTATED_DETECTION:
+            return OpenVINORotatedRectInferencer(*args)
         raise RuntimeError(f"Unknown OpenVINO Inferencer TaskType: {self.task_type}")
 
     def infer(self, dataset: DatasetEntity, inference_parameters: Optional[InferenceParameters] = None) -> DatasetEntity:
