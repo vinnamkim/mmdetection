@@ -28,7 +28,7 @@ model = dict(
         score_thr=0.01,
         nms=dict(type='nms', iou_threshold=0.65)))
 
-evaluation = dict(interval=1, metric_items=['mAP'], save_best='bbox_mAP')
+evaluation = dict(interval=1, metric='mAP', save_best='mAP')
 optimizer = dict(
     type='SGD',
     lr=0.0025,
@@ -39,7 +39,7 @@ optimizer = dict(
 optimizer_config = dict(grad_clip=None)
 lr_config = dict(
     policy='ReduceLROnPlateau',
-    metric='bbox_mAP',
+    metric='mAP',
     patience=3,
     iteration_patience=300,
     interval=1,
@@ -69,7 +69,7 @@ custom_hooks = [
         type='EarlyStoppingHook',
         patience=10,
         iteration_patience=1000,
-        metric='bbox_mAP',
+        metric='mAP',
         interval=1,
         priority=75),
     dict(
@@ -87,10 +87,6 @@ custom_hooks = [
         num_last_epochs=15,
         interval=1,
         priority=48),
-    dict(
-        type='ExpMomentumEMAHook',
-        resume_from=resume_from,
-        priority=49)
 ]
 
 

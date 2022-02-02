@@ -285,7 +285,7 @@ class ClassBalancedDataset(object):
 
 
 @DATASETS.register_module()
-class MultiImageMixDataset:
+class MultiImageMixDataset(object):
     """A wrapper of multiple images mixed dataset.
 
     Suitable for training on multiple images mixed data augmentation like
