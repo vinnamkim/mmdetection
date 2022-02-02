@@ -21,6 +21,7 @@ import warnings
 from subprocess import run  # nosec
 from typing import List, Optional, Tuple
 
+import cv2
 import numpy as np
 import torch
 from mmcv.parallel import MMDataParallel
@@ -30,8 +31,10 @@ from ote_sdk.entities.annotation import Annotation
 from ote_sdk.entities.datasets import DatasetEntity
 from ote_sdk.entities.inference_parameters import InferenceParameters, default_progress_callback
 from ote_sdk.entities.model import ModelEntity, ModelFormat, ModelOptimizationType, ModelPrecision
+from ote_sdk.entities.model_template import TaskType
 from ote_sdk.entities.resultset import ResultSetEntity
 from ote_sdk.entities.scored_label import ScoredLabel
+from ote_sdk.entities.shapes.polygon import Point, Polygon
 from ote_sdk.entities.shapes.rectangle import Rectangle
 from ote_sdk.entities.task_environment import TaskEnvironment
 from ote_sdk.entities.tensor import TensorEntity
@@ -72,7 +75,7 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
         run('pip list', shell=True, check=True)
 
         self._task_environment = task_environment
-
+        self._task_type = task_environment.model_template.task_type
         self._scratch_space = tempfile.mkdtemp(prefix="ote-det-scratch-")
         logger.info(f'Scratch space created at {self._scratch_space}')
 
@@ -168,29 +171,52 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
 
     def _add_predictions_to_dataset(self, prediction_results, dataset, confidence_threshold=0.0):
         """ Loop over dataset again to assign predictions. Convert from MMDetection format to OTE format. """
-        for dataset_item, (all_bboxes, feature_vector) in zip(dataset, prediction_results):
+        for dataset_item, (all_results, feature_vector) in zip(dataset, prediction_results):
             width = dataset_item.width
             height = dataset_item.height
 
             shapes = []
-            for label_idx, detections in enumerate(all_bboxes):
-                for i in range(detections.shape[0]):
-                    probability = float(detections[i, 4])
-                    coords = detections[i, :4].astype(float).copy()
-                    coords /= np.array([width, height, width, height], dtype=float)
-                    coords = np.clip(coords, 0, 1)
+            if self._task_type == TaskType.DETECTION:
+                for label_idx, detections in enumerate(all_results):
+                    for i in range(detections.shape[0]):
+                        probability = float(detections[i, 4])
+                        coords = detections[i, :4].astype(float).copy()
+                        coords /= np.array([width, height, width, height], dtype=float)
+                        coords = np.clip(coords, 0, 1)
 
-                    if probability < confidence_threshold:
-                        continue
+                        if probability < confidence_threshold:
+                            continue
 
-                    assigned_label = [ScoredLabel(self._labels[label_idx],
-                                                  probability=probability)]
-                    if coords[3] - coords[1] <= 0 or coords[2] - coords[0] <= 0:
-                        continue
+                        assigned_label = [ScoredLabel(self._labels[label_idx],
+                                                      probability=probability)]
+                        if coords[3] - coords[1] <= 0 or coords[2] - coords[0] <= 0:
+                            continue
 
-                    shapes.append(Annotation(
-                        Rectangle(x1=coords[0], y1=coords[1], x2=coords[2], y2=coords[3]),
-                        labels=assigned_label))
+                        shapes.append(Annotation(
+                            Rectangle(x1=coords[0], y1=coords[1], x2=coords[2], y2=coords[3]),
+                            labels=assigned_label))
+            elif self._task_type == TaskType.INSTANCE_SEGMENTATION:
+                for label_idx, (boxes, masks) in enumerate(zip(*all_results)):
+                    for mask, probability in zip(masks, boxes[:, 4]):
+                        mask = mask.astype(np.uint8)
+                        contours, hierarchies = cv2.findContours(mask, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+                        if hierarchies is None:
+                            continue
+                        for contour, hierarchy in zip(contours, hierarchies[0]):
+                            if hierarchy[3] != -1:
+                                continue
+                            # TODO(ikrylov): MinAreaRect box points should be returned in case of Rotated Object Detection
+                            # rect = cv2.minAreaRect(contour)
+                            # box = cv2.boxPoints(rect)
+                            contour = list(contour)
+                            if len(contour) <= 2 or probability < confidence_threshold:
+                                continue
+                            points = [Point(x=point[0][0] / width, y=point[0][1] / height) for point in contour]
+                            labels = [ScoredLabel(self._labels[label_idx], probability=probability)]
+                            shapes.append(Annotation(Polygon(points=points), labels=labels, id=label_idx))
+            else:
+                raise RuntimeError(
+                    f"Detection results assignment not implemented for task: {self._task_type}")
 
             dataset_item.append_annotations(shapes)
 
@@ -275,9 +301,16 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
                     result = eval_model(return_loss=False, rescale=True, **data)
                 eval_predictions.extend(result)
 
+        # hard-code way to remove EvalHook args
+        for key in [
+                'interval', 'tmpdir', 'start', 'gpu_collect', 'save_best',
+                'rule', 'dynamic_intervals'
+        ]:
+            config.evaluation.pop(key, None)
+
         metric = None
         if eval:
-            metric = mm_val_dataset.evaluate(eval_predictions, metric=metric_name)[metric_name]
+            metric = mm_val_dataset.evaluate(eval_predictions, **config.evaluation)[metric_name]
 
         assert len(eval_predictions) == len(feature_vectors), f'{len(eval_predictions)} != {len(feature_vectors)}'
         eval_predictions = zip(eval_predictions, feature_vectors)
