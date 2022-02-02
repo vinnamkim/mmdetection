@@ -145,7 +145,7 @@ class OpenVINOMaskInferencer(BaseInferencerWithConverter):
         model = Model.create_model(
           'maskrcnn',
           model_adapter,
-          self.configuration,
+          configuration,
           preload=True)
 
         converter = MaskToAnnotationConverter(label_schema)
