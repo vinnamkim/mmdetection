@@ -351,7 +351,18 @@ def register_extra_symbolics(opset=10):
     patch_conv_ws()
 
 
+def unregister_extra_symbolics(opset=10):
+    from torch.onnx.symbolic_registry import _registry
+    _registry.get(('', opset), {}).pop('view_as', None)
+    _registry.get(('', opset), {}).pop('topk', None)
+
+
 def register_extra_symbolics_for_openvino(opset=10):
     assert opset >= 10
     register_op('roi_feature_extractor', roi_feature_extractor_symbolics, 'mmdet_custom', opset)
     patch_dcn_symbolic()
+
+
+def unregister_extra_symbolics_for_openvino(opset=10):
+    from torch.onnx.symbolic_registry import _registry
+    _registry.get(('mmdet_custom', opset), {}).pop('roi_feature_extractor', None)
