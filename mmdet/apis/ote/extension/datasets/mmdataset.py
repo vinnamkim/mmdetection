@@ -21,12 +21,16 @@ from ote_sdk.entities.datasets import DatasetEntity
 from ote_sdk.entities.label import Domain, LabelEntity
 from ote_sdk.utils.shape_factory import ShapeFactory
 
+from mmdet.core import PolygonMasks
 from mmdet.datasets.builder import DATASETS
 from mmdet.datasets.custom import CustomDataset
 from mmdet.datasets.pipelines import Compose
 
 
-def get_annotation_mmdet_format(dataset_item: DatasetItemEntity, labels: List[LabelEntity]) -> dict:
+def get_annotation_mmdet_format(
+    dataset_item: DatasetItemEntity,
+    labels: List[LabelEntity],
+) -> dict:
     """
     Function to convert a OTE annotation to mmdetection format. This is used both in the OTEDataset class defined in
     this file as in the custom pipeline element 'LoadAnnotationFromOTEDataset'
@@ -40,13 +44,14 @@ def get_annotation_mmdet_format(dataset_item: DatasetItemEntity, labels: List[La
     # load annotations for item
     gt_bboxes = []
     gt_labels = []
+    gt_polygons = []
 
     label_idx = {label.id: i for i, label in enumerate(labels)}
 
     for annotation in dataset_item.get_annotations(labels=labels, include_empty=False):
 
         box = ShapeFactory.shape_as_rectangle(annotation.shape)
-
+        polygon = ShapeFactory.shape_as_polygon(annotation.shape)
         class_indices = [
             label_idx[label.id]
             for label in annotation.get_labels(include_empty=False)
@@ -55,18 +60,20 @@ def get_annotation_mmdet_format(dataset_item: DatasetItemEntity, labels: List[La
 
         n = len(class_indices)
         gt_bboxes.extend([[box.x1 * width, box.y1 * height, box.x2 * width, box.y2 * height] for _ in range(n)])
+        gt_polygons.append([np.array([p for point in polygon.points for p in [point.x * width, point.y * height]])])
         gt_labels.extend(class_indices)
 
     if len(gt_bboxes) > 0:
         ann_info = dict(
             bboxes=np.array(gt_bboxes, dtype=np.float32).reshape(-1, 4),
             labels=np.array(gt_labels, dtype=int),
-        )
+            masks=PolygonMasks(
+                gt_polygons, height=height, width=width) if gt_polygons else [])
     else:
         ann_info = dict(
             bboxes=np.zeros((0, 4), dtype=np.float32),
             labels=np.array([], dtype=int),
-        )
+            masks=[])
     return ann_info
 
 

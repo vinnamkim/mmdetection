@@ -174,7 +174,7 @@ def wrap_nncf_model(model,
             return dist_eval_res[0][metric_name]
         else:
             results = single_gpu_test(prepared_model, val_dataloader, show=False)
-            eval_res = val_dataloader.dataset.evaluate(results)
+            eval_res = val_dataloader.dataset.evaluate(results, metric=metric_name)
 
             if metric_name not in eval_res:
                 raise RuntimeError(f'Cannot find {metric_name} metric in '
