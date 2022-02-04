@@ -67,7 +67,7 @@ def load_test_dataset():
         gen_image((640, 480), 0.5, 0.5, 1.0, 1.0),
     ]
     labels = [
-        LabelEntity(name='rect', domain=Domain.DETECTION, id=ID(0))
+        LabelEntity(name='rect', domain=Domain.DETECTION, id=ID(f"{0:08}"))
     ]
 
     def get_image(i, subset):
