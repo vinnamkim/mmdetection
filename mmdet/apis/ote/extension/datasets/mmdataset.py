@@ -63,7 +63,8 @@ def get_annotation_mmdet_format(
         gt_bboxes.extend([[box.x1 * width, box.y1 * height, box.x2 * width, box.y2 * height] for _ in range(n)])
         if domain != Domain.DETECTION:
             polygon = ShapeFactory.shape_as_polygon(annotation.shape)
-            gt_polygons.extend([[np.array([p for point in polygon.points for p in [point.x * width, point.y * height]])] for _ in range(n)])
+            polygon = np.array([p for point in polygon.points for p in [point.x * width, point.y * height]])
+            gt_polygons.extend([[polygon] for _ in range(n)])
         gt_labels.extend(class_indices)
 
     if len(gt_bboxes) > 0:
