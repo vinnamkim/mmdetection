@@ -24,6 +24,7 @@ from typing import Any, Callable, Dict, List, Optional
 import pytest
 import yaml
 from ote_sdk.entities.datasets import DatasetEntity
+from ote_sdk.entities.label import Domain
 from ote_sdk.entities.label_schema import LabelSchemaEntity
 from ote_sdk.entities.subset import Subset
 
@@ -79,16 +80,19 @@ def _create_object_detection_dataset_and_labels_schema(dataset_params):
     items = load_dataset_items_coco_format(
         ann_file_path=dataset_params.annotations_train,
         data_root_dir=dataset_params.images_train_dir,
+        domain=Domain.DETECTION,
         subset=Subset.TRAINING,
         labels_list=labels_list)
     items.extend(load_dataset_items_coco_format(
         ann_file_path=dataset_params.annotations_val,
         data_root_dir=dataset_params.images_val_dir,
+        domain=Domain.DETECTION,
         subset=Subset.VALIDATION,
         labels_list=labels_list))
     items.extend(load_dataset_items_coco_format(
         ann_file_path=dataset_params.annotations_test,
         data_root_dir=dataset_params.images_test_dir,
+        domain=Domain.DETECTION,
         subset=Subset.TESTING,
         labels_list=labels_list))
     dataset = DatasetEntity(items=items)

@@ -79,7 +79,7 @@ def generate_label_schema(label_names, label_domain=Domain.DETECTION):
     exclusive_group = LabelGroup(name="labels", labels=not_empty_labels, group_type=LabelGroupType.EXCLUSIVE)
     empty_group = LabelGroup(name="empty", labels=[emptylabel], group_type=LabelGroupType.EMPTY_LABEL)
     label_schema.add_group(exclusive_group)
-    label_schema.add_group(empty_group, exclusive_with=[exclusive_group])
+    label_schema.add_group(empty_group)
     return label_schema
 
 
