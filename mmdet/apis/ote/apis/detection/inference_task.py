@@ -31,7 +31,7 @@ from ote_sdk.entities.annotation import Annotation
 from ote_sdk.entities.datasets import DatasetEntity
 from ote_sdk.entities.inference_parameters import InferenceParameters, default_progress_callback
 from ote_sdk.entities.model import ModelEntity, ModelFormat, ModelOptimizationType, ModelPrecision
-from ote_sdk.entities.model_template import TaskType
+from ote_sdk.entities.model_template import TaskType, task_type_to_label_domain
 from ote_sdk.entities.resultset import ResultSetEntity
 from ote_sdk.entities.scored_label import ScoredLabel
 from ote_sdk.entities.shapes.polygon import Point, Polygon
@@ -88,7 +88,7 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
         self._base_dir = os.path.abspath(os.path.dirname(template_file_path))
         config_file_path = os.path.join(self._base_dir, "model.py")
         self._config = Config.fromfile(config_file_path)
-        patch_config(self._config, self._scratch_space, self._labels, random_seed=42)
+        patch_config(self._config, self._scratch_space, self._labels, task_type_to_label_domain(self._task_type), random_seed=42)
         set_hyperparams(self._config, self._hyperparams)
         self.confidence_threshold: float = self._hyperparams.postprocessing.confidence_threshold
 
@@ -195,7 +195,7 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
                         shapes.append(Annotation(
                             Rectangle(x1=coords[0], y1=coords[1], x2=coords[2], y2=coords[3]),
                             labels=assigned_label))
-            elif self._task_type == TaskType.INSTANCE_SEGMENTATION:
+            elif self._task_type in {TaskType.INSTANCE_SEGMENTATION, TaskType.ROTATED_DETECTION}:
                 for label_idx, (boxes, masks) in enumerate(zip(*all_results)):
                     for mask, probability in zip(masks, boxes[:, 4]):
                         mask = mask.astype(np.uint8)
@@ -205,13 +205,13 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
                         for contour, hierarchy in zip(contours, hierarchies[0]):
                             if hierarchy[3] != -1:
                                 continue
-                            # TODO(ikrylov): MinAreaRect box points should be returned in case of Rotated Object Detection
-                            # rect = cv2.minAreaRect(contour)
-                            # box = cv2.boxPoints(rect)
-                            contour = list(contour)
                             if len(contour) <= 2 or probability < confidence_threshold:
                                 continue
-                            points = [Point(x=point[0][0] / width, y=point[0][1] / height) for point in contour]
+                            if self._task_type == TaskType.INSTANCE_SEGMENTATION:
+                                points = [Point(x=point[0][0] / width, y=point[0][1] / height) for point in contour]
+                            else:
+                                box_points = cv2.boxPoints(cv2.minAreaRect(contour))
+                                points = [Point(x=point[0] / width, y=point[1] / height) for point in box_points]
                             labels = [ScoredLabel(self._labels[label_idx], probability=probability)]
                             shapes.append(Annotation(Polygon(points=points), labels=labels, id=label_idx))
             else:

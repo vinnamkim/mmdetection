@@ -78,13 +78,14 @@ class LoadAnnotationFromOTEDataset:
     """
 
     def __init__(self, with_bbox: bool = True, with_label: bool = True, with_mask: bool = False, with_seg: bool = False,
-                 poly2mask: bool = True, with_text: bool = False):
+                 poly2mask: bool = True, with_text: bool = False, domain=None):
         self.with_bbox = with_bbox
         self.with_label = with_label
         self.with_mask = with_mask
         self.with_seg = with_seg
         self.poly2mask = poly2mask
         self.with_text = with_text
+        self.domain = domain
 
     @staticmethod
     def _load_bboxes(results, ann_info):
@@ -106,7 +107,7 @@ class LoadAnnotationFromOTEDataset:
     def __call__(self, results):
         dataset_item = results['dataset_item']
         label_list = results['ann_info']['label_list']
-        ann_info = get_annotation_mmdet_format(dataset_item, label_list)
+        ann_info = get_annotation_mmdet_format(dataset_item, label_list, self.domain)
         if self.with_bbox:
             results = self._load_bboxes(results, ann_info)
             if results is None or len(results['gt_bboxes']) == 0:

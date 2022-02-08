@@ -68,8 +68,7 @@ class ColorPalette:
         return len(self.palette)
 
 
-def generate_label_schema(label_names):
-    label_domain = Domain.DETECTION
+def generate_label_schema(label_names, label_domain=Domain.DETECTION):
     colors = ColorPalette(len(label_names)) if len(label_names) > 0 else []
     not_empty_labels = [LabelEntity(name=name, color=colors[i], domain=label_domain, id=i) for i, name in
                         enumerate(label_names)]
