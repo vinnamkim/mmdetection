@@ -28,11 +28,6 @@ from ote_sdk.entities.subset import Subset
 from mmdet.apis.ote.extension.datasets.data_utils import load_dataset_items_coco_format
 
 from ote_sdk.test_suite.e2e_test_system import DataCollector, e2e_pytest_performance
-from ote_sdk.test_suite.training_tests_actions import (BaseOTETestAction,
-                                                       OTETestNNCFGraphAction,
-                                                       get_default_test_action_classes)
-from ote_sdk.test_suite.training_test_case import (OTETestCaseInterface,
-                                                   generate_ote_integration_test_case_class)
 from ote_sdk.test_suite.training_tests_common import (make_path_be_abs,
                                                       make_paths_be_abs,
                                                       KEEP_CONFIG_FIELD_VALUE,
@@ -101,38 +96,8 @@ def _create_object_detection_dataset_and_labels_schema(dataset_params):
     labels_schema = LabelSchemaEntity.from_labels(labels_list)
     return dataset, labels_schema
 
-class ObjectDetectionTestNNCFGraph(OTETestNNCFGraphAction):
-
-    def _get_compressed_model(self, task):
-        # pylint:disable=protected-access
-        from mmdet.integration.nncf import wrap_nncf_model
-        from mmdet.apis.fake_input import get_fake_input
-
-        # Disable quantaizers initialization
-        for compression in task._config.nncf_config['compression']:
-            if compression["algorithm"] == "quantization":
-                compression["initializer"] = {
-                    "batchnorm_adaptation": {
-                        "num_bn_adaptation_samples": 0
-                    }
-                }
-
-        _, compressed_model = wrap_nncf_model(task._model,
-                                              task._config,
-                                              get_fake_input_func=get_fake_input)
-        return compressed_model
-
-
-def get_detection_test_action_classes() -> List[Type[BaseOTETestAction]]:
-    return get_default_test_action_classes() + [ObjectDetectionTestNNCFGraph]
-
 
 class ObjectDetectionTrainingTestParameters(DefaultOTETestCreationParametersInterface):
-
-    def test_case_class(self) -> Type[OTETestCaseInterface]:
-        return generate_ote_integration_test_case_class(
-            get_detection_test_action_classes()
-        )
 
     def test_bunches(self) -> List[Dict[str, Any]]:
         test_bunches = [
@@ -166,6 +131,30 @@ class ObjectDetectionTrainingTestParameters(DefaultOTETestCreationParametersInte
 
         ]
         return deepcopy(test_bunches)
+
+
+def get_dummy_compressed_model(self, task):
+    """
+    Return compressed model without initialization
+    """
+    # pylint:disable=protected-access
+    from mmdet.integration.nncf import wrap_nncf_model
+    from mmdet.apis.fake_input import get_fake_input
+
+    # Disable quantaizers initialization
+    for compression in task._config.nncf_config['compression']:
+        if compression["algorithm"] == "quantization":
+            compression["initializer"] = {
+                "batchnorm_adaptation": {
+                    "num_bn_adaptation_samples": 0
+                }
+            }
+
+    _, compressed_model = wrap_nncf_model(task._model,
+                                          task._config,
+                                          get_fake_input_func=get_fake_input)
+    return compressed_model
+
 
 class TestOTEReallifeObjectDetection(OTETrainingTestInterface):
     """
@@ -242,6 +231,7 @@ class TestOTEReallifeObjectDetection(OTETrainingTestInterface):
                 'labels_schema': labels_schema,
                 'template_path': template_path,
                 'reference_dir': ote_current_reference_dir_fx,
+                'fn_get_compressed_model': get_dummy_compressed_model,
             }
 
         params_factories_for_test_actions = {
