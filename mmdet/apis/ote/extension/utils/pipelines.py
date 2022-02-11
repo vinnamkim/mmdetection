@@ -78,13 +78,14 @@ class LoadAnnotationFromOTEDataset:
     """
 
     def __init__(self, with_bbox: bool = True, with_label: bool = True, with_mask: bool = False, with_seg: bool = False,
-                 poly2mask: bool = True, with_text: bool = False):
+                 poly2mask: bool = True, with_text: bool = False, domain=None):
         self.with_bbox = with_bbox
         self.with_label = with_label
         self.with_mask = with_mask
         self.with_seg = with_seg
         self.poly2mask = poly2mask
         self.with_text = with_text
+        self.domain = domain
 
     @staticmethod
     def _load_bboxes(results, ann_info):
@@ -97,15 +98,22 @@ class LoadAnnotationFromOTEDataset:
         results['gt_labels'] = copy.deepcopy(ann_info['labels'])
         return results
 
+    @staticmethod
+    def _load_masks(results, ann_info):
+        results['mask_fields'].append('gt_masks')
+        results['gt_masks'] = copy.deepcopy(ann_info['masks'])
+        return results
+
     def __call__(self, results):
         dataset_item = results['dataset_item']
         label_list = results['ann_info']['label_list']
-        ann_info = get_annotation_mmdet_format(dataset_item, label_list)
-        # TODO. First only load bboxes, will extend to masks for semantic segmentation
+        ann_info = get_annotation_mmdet_format(dataset_item, label_list, self.domain)
         if self.with_bbox:
             results = self._load_bboxes(results, ann_info)
             if results is None or len(results['gt_bboxes']) == 0:
                 return None
         if self.with_label:
             results = self._load_labels(results, ann_info)
+        if self.with_mask:
+            results = self._load_masks(results, ann_info)
         return results

@@ -12,23 +12,24 @@
 # See the License for the specific language governing permissions
 # and limitations under the License.
 
-import math
-from collections import defaultdict
-
 import copy
 import glob
+import math
 import os
 import tempfile
+from collections import defaultdict
+from typing import List, Optional
+
 from mmcv import Config, ConfigDict
 from ote_sdk.entities.datasets import DatasetEntity
-from ote_sdk.entities.label import LabelEntity
+from ote_sdk.entities.label import LabelEntity, Domain
 from ote_sdk.usecases.reporting.time_monitor_callback import TimeMonitorCallback
-from typing import List, Optional
 
 from mmdet.apis.ote.extension.datasets.data_utils import get_anchor_boxes, \
     get_sizes_from_dataset_entity, format_list_to_str
 from mmdet.models.detectors import BaseDetector
 from mmdet.utils.logger import get_root_logger
+
 from .configuration import OTEDetectionConfig
 
 try:
@@ -45,7 +46,7 @@ def is_epoch_based_runner(runner_config: ConfigDict):
     return 'Epoch' in runner_config.type
 
 
-def patch_config(config: Config, work_dir: str, labels: List[LabelEntity], random_seed: Optional[int] = None):
+def patch_config(config: Config, work_dir: str, labels: List[LabelEntity], domain: Domain, random_seed: Optional[int] = None):
     # Set runner if not defined.
     if 'runner' not in config:
         config.runner = {'type': 'EpochBasedRunner'}
@@ -80,7 +81,7 @@ def patch_config(config: Config, work_dir: str, labels: List[LabelEntity], rando
     remove_from_config(config, 'test_pipeline')
 
     # Patch data pipeline, making it OTE-compatible.
-    patch_datasets(config)
+    patch_datasets(config, domain)
 
     if 'log_config' not in config:
         config.log_config = ConfigDict()
@@ -107,6 +108,8 @@ def patch_config(config: Config, work_dir: str, labels: List[LabelEntity], rando
 def set_hyperparams(config: Config, hyperparams: OTEDetectionConfig):
     config.optimizer.lr = float(hyperparams.learning_parameters.learning_rate)
     config.lr_config.warmup_iters = int(hyperparams.learning_parameters.learning_rate_warmup_iters)
+    if config.lr_config.warmup_iters == 0:
+        config.lr_config.warmup = None
     config.data.samples_per_gpu = int(hyperparams.learning_parameters.batch_size)
     config.data.workers_per_gpu = int(hyperparams.learning_parameters.num_workers)
     total_iterations = int(hyperparams.learning_parameters.num_iters)
@@ -234,20 +237,25 @@ def set_data_classes(config: Config, labels: List[LabelEntity]):
         config.data[subset].labels = labels
 
     # Set proper number of classes in model's detection heads.
+    head_names = ('mask_head', 'bbox_head', 'segm_head')
     num_classes = len(labels)
     if 'roi_head' in config.model:
-        if isinstance(config.model.roi_head.bbox_head, List):
-            for head in config.model.roi_head.bbox_head:
-                head.num_classes = num_classes
-        else:
-            config.model.roi_head.bbox_head.num_classes = num_classes
-    elif 'bbox_head' in config.model:
-        config.model.bbox_head.num_classes = num_classes
+        for head_name in head_names:
+            if head_name in config.model.roi_head:
+                if isinstance(config.model.roi_head[head_name], List):
+                    for head in config.model.roi_head[head_name]:
+                        head.num_classes = num_classes
+                else:
+                    config.model.roi_head[head_name].num_classes = num_classes
+    else:
+        for head_name in head_names:
+            if head_name in config.model:
+                config.model[head_name].num_classes = num_classes
     # FIXME. ?
     # self.config.model.CLASSES = label_names
 
 
-def patch_datasets(config: Config):
+def patch_datasets(config: Config, domain):
 
     def patch_color_conversion(pipeline):
         # Default data format for OTE is RGB, while mmdet uses BGR, so negate the color conversion flag.
@@ -267,6 +275,7 @@ def patch_datasets(config: Config):
         if cfg.type == 'RepeatDataset' or cfg.type == 'MultiImageMixDataset':
             cfg = cfg.dataset
         cfg.type = 'OTEDataset'
+        cfg.domain = domain
         cfg.ote_dataset = None
         cfg.labels = None
         remove_from_config(cfg, 'ann_file')
@@ -276,6 +285,7 @@ def patch_datasets(config: Config):
                 pipeline_step.type = 'LoadImageFromOTEDataset'
             if pipeline_step.type == 'LoadAnnotations':
                 pipeline_step.type = 'LoadAnnotationFromOTEDataset'
+                pipeline_step.domain = domain
         patch_color_conversion(cfg.pipeline)
 
 

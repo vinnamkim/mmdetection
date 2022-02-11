@@ -24,31 +24,28 @@ from subprocess import run  # nosec
 from typing import Optional
 
 import numpy as np
-import pytest
 import torch
 from bson import ObjectId
 from ote_sdk.test_suite.e2e_test_system import e2e_pytest_api
 from ote_sdk.configuration.helper import convert, create
-from ote_sdk.entities.annotation import Annotation, AnnotationSceneEntity, AnnotationSceneKind
+from ote_sdk.entities.annotation import AnnotationSceneEntity, AnnotationSceneKind
 from ote_sdk.entities.dataset_item import DatasetItemEntity
 from ote_sdk.entities.datasets import DatasetEntity
 from ote_sdk.entities.image import Image
 from ote_sdk.entities.inference_parameters import InferenceParameters
+from ote_sdk.entities.model_template import TaskType, task_type_to_label_domain
 from ote_sdk.entities.metrics import Performance
-from ote_sdk.entities.model import (ModelEntity, ModelFormat, ModelOptimizationType, ModelPrecision, ModelStatus,
-                                    OptimizationMethod)
-from ote_sdk.entities.model_template import TargetDevice, parse_model_template
+from ote_sdk.entities.model import ModelEntity, ModelFormat, ModelOptimizationType
+from ote_sdk.entities.model_template import parse_model_template
 from ote_sdk.entities.optimization_parameters import OptimizationParameters
 from ote_sdk.entities.resultset import ResultSetEntity
-from ote_sdk.entities.shapes.ellipse import Ellipse
-from ote_sdk.entities.shapes.polygon import Polygon
-from ote_sdk.entities.shapes.rectangle import Rectangle
 from ote_sdk.entities.subset import Subset
 from ote_sdk.entities.task_environment import TaskEnvironment
 from ote_sdk.entities.train_parameters import TrainParameters
 from ote_sdk.tests.test_helpers import generate_random_annotated_image
 from ote_sdk.usecases.tasks.interfaces.export_interface import ExportType, IExportTask
 from ote_sdk.usecases.tasks.interfaces.optimization_interface import OptimizationType
+from ote_sdk.utils.shape_factory import ShapeFactory
 
 from mmdet.apis.ote.apis.detection import (OpenVINODetectionTask, OTEDetectionConfig, OTEDetectionInferenceTask,
                                            OTEDetectionNNCFTask, OTEDetectionTrainingTask)
@@ -112,9 +109,15 @@ class API(unittest.TestCase):
     Collection of tests for OTE API and OTE Model Templates
     """
 
-    def init_environment(self, params, model_template, number_of_images=500):
+    def init_environment(
+            self,
+            params,
+            model_template,
+            number_of_images=500,
+            task_type=TaskType.DETECTION):
+
         labels_names = ('rectangle', 'ellipse', 'triangle')
-        labels_schema = generate_label_schema(labels_names)
+        labels_schema = generate_label_schema(labels_names, task_type_to_label_domain(task_type))
         labels_list = labels_schema.get_labels(False)
         environment = TaskEnvironment(model=None, hyper_parameters=params, label_schema=labels_schema,
                                       model_template=model_template)
@@ -122,31 +125,26 @@ class API(unittest.TestCase):
         warnings.filterwarnings('ignore', message='.* coordinates .* are out of bounds.*')
         items = []
         for i in range(0, number_of_images):
-            image_numpy, shapes = generate_random_annotated_image(image_width=640,
-                                                                  image_height=480,
-                                                                  labels=labels_list,
-                                                                  max_shapes=20,
-                                                                  min_size=50,
-                                                                  max_size=100,
-                                                                  random_seed=None)
-            # Convert all shapes to bounding boxes
-            box_shapes = []
-            for shape in shapes:
-                shape_labels = shape.get_labels(include_empty=True)
-                shape = shape.shape
-                if isinstance(shape, (Rectangle, Ellipse)):
-                    box = np.array([shape.x1, shape.y1, shape.x2, shape.y2], dtype=float)
-                elif isinstance(shape, Polygon):
-                    box = np.array([shape.min_x, shape.min_y, shape.max_x, shape.max_y], dtype=float)
-                box = box.clip(0, 1)
-                box_shapes.append(Annotation(Rectangle(x1=box[0], y1=box[1], x2=box[2], y2=box[3]),
-                                             labels=shape_labels))
+            image_numpy, annos = generate_random_annotated_image(
+                image_width=640,
+                image_height=480,
+                labels=labels_list,
+                max_shapes=20,
+                min_size=50,
+                max_size=100,
+                random_seed=None)
+            # Convert shapes according to task
+            for anno in annos:
+                if task_type == TaskType.INSTANCE_SEGMENTATION:
+                    anno.shape = ShapeFactory.shape_as_polygon(anno.shape)
+                else:
+                    anno.shape = ShapeFactory.shape_as_rectangle(anno.shape)
 
             image = Image(data=image_numpy)
-            annotation = AnnotationSceneEntity(
+            annotation_scene = AnnotationSceneEntity(
                 kind=AnnotationSceneKind.ANNOTATION,
-                annotations=box_shapes)
-            items.append(DatasetItemEntity(media=image, annotation_scene=annotation))
+                annotations=annos)
+            items.append(DatasetItemEntity(media=image, annotation_scene=annotation_scene))
         warnings.resetwarnings()
 
         rng = random.Random()
@@ -201,7 +199,6 @@ class API(unittest.TestCase):
         output_model = ModelEntity(
             dataset,
             detection_environment.get_model_configuration(),
-            model_status=ModelStatus.NOT_READY
         )
 
         training_progress_curve = []
@@ -253,7 +250,6 @@ class API(unittest.TestCase):
         output_model = ModelEntity(
             dataset,
             detection_environment.get_model_configuration(),
-            model_status=ModelStatus.NOT_READY
         )
         task.train(dataset, output_model, train_parameters)
 
@@ -276,7 +272,6 @@ class API(unittest.TestCase):
         original_model = ModelEntity(
             dataset,
             detection_environment.get_model_configuration(),
-            model_status=ModelStatus.NOT_READY
         )
         task.train(dataset, original_model, TrainParameters)
 
@@ -303,7 +298,6 @@ class API(unittest.TestCase):
         nncf_model = ModelEntity(
             dataset,
             detection_environment.get_model_configuration(),
-            model_status=ModelStatus.NOT_READY
         )
 
         nncf_task.optimize(OptimizationType.NNCF, dataset, nncf_model, optimization_parameters)
@@ -349,7 +343,6 @@ class API(unittest.TestCase):
         trained_model = ModelEntity(
             dataset,
             detection_environment.get_model_configuration(),
-            model_status=ModelStatus.NOT_READY
         )
         train_task.train(dataset, trained_model, TrainParameters)
         performance_after_train = self.eval(train_task, trained_model, val_dataset)
@@ -367,7 +360,6 @@ class API(unittest.TestCase):
         exported_model = ModelEntity(
             dataset,
             detection_environment.get_model_configuration(),
-            model_status=ModelStatus.NOT_READY,
             _id=ObjectId())
         inference_task.export(ExportType.OPENVINO, exported_model)
 
@@ -397,11 +389,21 @@ class API(unittest.TestCase):
                 f'delta tolerance threshold: {delta_tolerance})'
             )
 
-    def end_to_end(self, template_dir, num_iters=5, quality_score_threshold=0.5, reload_perf_delta_tolerance=0.0,
-        export_perf_delta_tolerance=0.0005, pot_perf_delta_tolerance=0.1, nncf_perf_delta_tolerance=0.1):
+    def end_to_end(
+            self,
+            template_dir,
+            num_iters=5,
+            quality_score_threshold=0.5,
+            reload_perf_delta_tolerance=0.0,
+            export_perf_delta_tolerance=0.0005,
+            pot_perf_delta_tolerance=0.1,
+            nncf_perf_delta_tolerance=0.1,
+            task_type=TaskType.DETECTION):
 
-        hyper_parameters, model_template = self.setup_configurable_parameters(template_dir, num_iters=num_iters)
-        detection_environment, dataset = self.init_environment(hyper_parameters, model_template, 250)
+        hyper_parameters, model_template = self.setup_configurable_parameters(
+            template_dir, num_iters=num_iters)
+        detection_environment, dataset = self.init_environment(
+            hyper_parameters, model_template, 250, task_type=task_type)
 
         val_dataset = dataset.get_subset(Subset.VALIDATION)
         task = OTEDetectionTrainingTask(task_environment=detection_environment)
@@ -415,12 +417,10 @@ class API(unittest.TestCase):
         output_model = ModelEntity(
             dataset,
             detection_environment.get_model_configuration(),
-            model_status=ModelStatus.NOT_READY,
             _id=ObjectId())
         task.train(dataset, output_model)
 
         # Test that output model is valid.
-        self.assertEqual(output_model.model_status, ModelStatus.SUCCESS)
         modelinfo = torch.load(io.BytesIO(output_model.get_data("weights.pth")))
         modelinfo.pop('anchors', None)
         self.assertEqual(list(modelinfo.keys()), ['model', 'config', 'confidence_threshold', 'VERSION'])
@@ -436,16 +436,13 @@ class API(unittest.TestCase):
         new_model = ModelEntity(
             dataset,
             detection_environment.get_model_configuration(),
-            model_status=ModelStatus.NOT_READY,
             _id=ObjectId())
         task._hyperparams.learning_parameters.num_iters = 1
         task.train(dataset, new_model)
-        self.assertEqual(new_model.model_status, ModelStatus.SUCCESS)
         self.assertNotEqual(first_model, new_model)
         self.assertNotEqual(first_model.get_data("weights.pth"), new_model.get_data("weights.pth"))
 
-        # Make the new model fail.
-        new_model.model_status = ModelStatus.NOT_IMPROVED
+        # Reload task with the first model.
         detection_environment.model = first_model
         task = OTEDetectionTrainingTask(detection_environment)
         self.assertEqual(task._task_environment.model.id, first_model.id)
@@ -462,10 +459,8 @@ class API(unittest.TestCase):
             exported_model = ModelEntity(
                 dataset,
                 detection_environment.get_model_configuration(),
-                model_status=ModelStatus.NOT_READY,
                 _id=ObjectId())
             task.export(ExportType.OPENVINO, exported_model)
-            self.assertEqual(exported_model.model_status, ModelStatus.SUCCESS)
             self.assertEqual(exported_model.model_format, ModelFormat.OPENVINO)
             self.assertEqual(exported_model.optimization_type, ModelOptimizationType.MO)
 
@@ -490,14 +485,7 @@ class API(unittest.TestCase):
             optimized_model = ModelEntity(
                 dataset,
                 detection_environment.get_model_configuration(),
-                optimization_type=ModelOptimizationType.POT,
-                optimization_methods=OptimizationMethod.QUANTIZATION,
-                optimization_objectives={},
-                precision=[ModelPrecision.INT8],
-                target_device=TargetDevice.CPU,
-                performance_improvement={},
-                model_size_reduction=1.,
-                model_status=ModelStatus.NOT_READY)
+            )
             ov_task.optimize(OptimizationType.POT, dataset, optimized_model, OptimizationParameters())
             pot_performance = self.eval(ov_task, optimized_model, val_dataset)
             print(f'Performance of optimized model: {pot_performance.score.value:.4f}')
@@ -510,14 +498,7 @@ class API(unittest.TestCase):
                 nncf_model = ModelEntity(
                     dataset,
                     detection_environment.get_model_configuration(),
-                    optimization_type=ModelOptimizationType.NNCF,
-                    optimization_methods=OptimizationMethod.QUANTIZATION,
-                    optimization_objectives={},
-                    precision=[ModelPrecision.INT8],
-                    target_device=TargetDevice.CPU,
-                    performance_improvement={},
-                    model_size_reduction=1.,
-                    model_status=ModelStatus.NOT_READY)
+                )
                 nncf_model.set_data('weights.pth', output_model.get_data("weights.pth"))
 
                 detection_environment.model = nncf_model
@@ -546,3 +527,9 @@ class API(unittest.TestCase):
     def test_training_gen3_vfnet(self):
         self.end_to_end(osp.join('configs', 'ote', 'custom-object-detection', 'gen3_resnet50_VFNet'),
             export_perf_delta_tolerance=0.01)
+
+    @e2e_pytest_api
+    def test_training_maskrcnn_resnet50(self):
+        self.end_to_end(osp.join('configs', 'ote',
+                        'custom-counting-instance-seg', 'resnet50_maskrcnn'),
+                        task_type=TaskType.INSTANCE_SEGMENTATION)

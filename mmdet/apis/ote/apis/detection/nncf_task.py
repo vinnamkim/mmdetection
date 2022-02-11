@@ -14,7 +14,6 @@
 
 import io
 import json
-import logging
 import os
 from collections import defaultdict
 from typing import Optional
@@ -28,7 +27,6 @@ from ote_sdk.entities.model import (
     ModelFormat,
     ModelOptimizationType,
     ModelPrecision,
-    ModelStatus,
     OptimizationMethod,
 )
 from ote_sdk.entities.optimization_parameters import default_progress_callback, OptimizationParameters
@@ -231,7 +229,6 @@ class OTEDetectionNNCFTask(OTEDetectionInferenceTask, IOptimizationTask):
 
         self.save_model(output_model)
 
-        output_model.model_status = ModelStatus.SUCCESS
         output_model.model_format = ModelFormat.BASE_FRAMEWORK
         output_model.optimization_type = self._optimization_type
         output_model.optimization_methods = self._optimization_methods

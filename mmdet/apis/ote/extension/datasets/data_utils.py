@@ -13,10 +13,13 @@ from ote_sdk.entities.id import ID
 from ote_sdk.entities.image import Image
 from ote_sdk.entities.label import Domain, LabelEntity
 from ote_sdk.entities.scored_label import ScoredLabel
+from ote_sdk.entities.shapes.polygon import Polygon, Point
 from ote_sdk.entities.shapes.rectangle import Rectangle
 from ote_sdk.entities.subset import Subset
+from ote_sdk.utils.shape_factory import ShapeFactory
 from pycocotools.coco import COCO
 
+from mmdet.core import BitmapMasks, PolygonMasks
 
 def get_classes_from_annotation(path):
     with open(path) as read_file:
@@ -28,9 +31,10 @@ def get_classes_from_annotation(path):
 
 
 class LoadAnnotations:
-    def __init__(self, with_bbox=True, with_label=True):
+    def __init__(self, with_bbox=True, with_label=True, with_mask=False):
         self.with_bbox = with_bbox
         self.with_label = with_label
+        self.with_mask = with_mask
 
     def _load_bboxes(self, results):
         ann_info = results["ann_info"]
@@ -47,6 +51,12 @@ class LoadAnnotations:
         results["gt_labels"] = results["ann_info"]["labels"].copy()
         return results
 
+    def _load_masks(self, results):
+        gt_masks = results['ann_info']['masks']
+        results['gt_masks'] = gt_masks
+        results['mask_fields'].append('gt_masks')
+        return results
+
     def __call__(self, results):
         if self.with_bbox:
             results = self._load_bboxes(results)
@@ -54,6 +64,8 @@ class LoadAnnotations:
                 return None
         if self.with_label:
             results = self._load_labels(results)
+        if self.with_mask:
+            results = self._load_masks(results)
 
         return results
 
@@ -74,6 +86,7 @@ class CocoDataset:
         test_mode=False,
         filter_empty_gt=True,
         min_size=None,
+        with_mask=False,
     ):
         self.ann_file = ann_file
         self.data_root = data_root
@@ -82,6 +95,7 @@ class CocoDataset:
         self.filter_empty_gt = filter_empty_gt
         self.classes = self.get_classes(classes)
         self.min_size = min_size
+        self.with_mask = with_mask
 
         if self.data_root is not None:
             # if not osp.isabs(self.ann_file):
@@ -120,7 +134,7 @@ class CocoDataset:
         ann_info = self.get_ann_info(idx)
         results = dict(img_info=img_info, ann_info=ann_info)
         self.pre_pipeline(results)
-        return LoadAnnotations()(results)
+        return LoadAnnotations(with_mask=self.with_mask)(results)
 
     def get_classes(self, classes=None):
         if classes is None:
@@ -232,12 +246,12 @@ class CocoDataset:
         return ann
 
 
-def find_label_by_name(labels, name):
+def find_label_by_name(labels, name, domain):
     matching_labels = [label for label in labels if label.name == name]
     if len(matching_labels) == 1:
         return matching_labels[0]
     elif len(matching_labels) == 0:
-        label = LabelEntity(name=name, domain=Domain.DETECTION, id=ID(len(labels)))
+        label = LabelEntity(name=name, domain=domain, id=ID(len(labels)))
         labels.append(label)
         return label
     else:
@@ -247,8 +261,10 @@ def find_label_by_name(labels, name):
 def load_dataset_items_coco_format(
     ann_file_path: str,
     data_root_dir: str,
+    domain: Domain,
     subset: Subset = Subset.NONE,
     labels_list: Optional[List[LabelEntity]] = None,
+    with_mask: bool = False,
 ):
     test_mode = subset in {Subset.VALIDATION, Subset.TESTING}
 
@@ -257,10 +273,11 @@ def load_dataset_items_coco_format(
         data_root=data_root_dir,
         classes=None,
         test_mode=test_mode,
+        with_mask=with_mask,
     )
     coco_dataset.test_mode = False
     for label_name in coco_dataset.classes:
-        find_label_by_name(labels_list, label_name)
+        find_label_by_name(labels_list, label_name, domain)
 
     dataset_items = []
     for item in coco_dataset:
@@ -268,7 +285,16 @@ def load_dataset_items_coco_format(
         def create_gt_box(x1, y1, x2, y2, label_name):
             return Annotation(
                 Rectangle(x1=x1, y1=y1, x2=x2, y2=y2),
-                labels=[ScoredLabel(label=find_label_by_name(labels_list, label_name))],
+                labels=[ScoredLabel(label=find_label_by_name(labels_list, label_name, domain))],
+            )
+
+        def create_gt_polygon(polygon_group, label_name):
+            if len(polygon_group) != 1:
+                raise RuntimeError("Complex instance segmentation masks consisting of several polygons are not supported.")
+
+            return Annotation(
+                Polygon(points=polygon_group[0]),
+                labels=[ScoredLabel(label=find_label_by_name(labels_list, label_name, domain))],
             )
 
         img_height = item["img_info"].get("height")
@@ -280,15 +306,33 @@ def load_dataset_items_coco_format(
         bboxes = item["gt_bboxes"] / divisor
         labels = item["gt_labels"]
 
+        assert len(bboxes) == len(labels)
+        if with_mask:
+            polygons = item["gt_masks"]
+            assert len(bboxes) == len(polygons)
+            normalized_polygons = []
+            for polygon_group in polygons:
+                normalized_polygons.append([])
+                for polygon in polygon_group:
+                    normalized_polygon = [p / divisor[i % 2] for i, p in enumerate(polygon)]
+                    points = [Point(normalized_polygon[i], normalized_polygon[i + 1]) for i in range(0, len(polygon), 2)]
+                    normalized_polygons[-1].append(points)
+
         if item["img_prefix"] is not None:
             filename = osp.join(item["img_prefix"], item["img_info"]["filename"])
         else:
             filename = item["img_info"]["filename"]
 
-        shapes = [
-            create_gt_box(x1, y1, x2, y2, coco_dataset.classes[label_id])
-            for (x1, y1, x2, y2), label_id in zip(bboxes, labels)
-        ]
+        if with_mask:
+            shapes = [
+                create_gt_polygon(polygon_group, coco_dataset.classes[label_id])
+                for polygon_group, label_id in zip(normalized_polygons, labels)
+            ]
+        else:
+            shapes = [
+                create_gt_box(x1, y1, x2, y2, coco_dataset.classes[label_id])
+                for (x1, y1, x2, y2), label_id in zip(bboxes, labels)
+            ]
 
         dataset_item = DatasetItemEntity(
             media=Image(file_path=filename),
@@ -312,11 +356,13 @@ def get_sizes_from_dataset_entity(dataset: DatasetEntity, target_wh: list):
     """
     wh_stats = []
     for item in dataset:
-        for ann in item.get_annotations():
-            box = ann.shape
-            w = box.width * target_wh[0]
-            h = box.height * target_wh[1]
-            wh_stats.append((w, h))
+        for ann in item.get_annotations(include_empty=False):
+            has_detection_labels = any(label.domain == Domain.DETECTION for label in ann.get_labels(include_empty=False))
+            if has_detection_labels:
+                box = ShapeFactory.shape_as_rectangle(ann.shape)
+                w = box.width * target_wh[0]
+                h = box.height * target_wh[1]
+                wh_stats.append((w, h))
     return wh_stats
 
 

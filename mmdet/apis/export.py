@@ -26,7 +26,12 @@ from mmdet.apis import get_fake_input
 from mmdet.integration.nncf import get_uncompressed_model
 from mmdet.models import detectors
 from mmdet.utils.deployment.ssd_export_helpers import *  # noqa: F403
-from mmdet.utils.deployment.symbolic import register_extra_symbolics, register_extra_symbolics_for_openvino
+from mmdet.utils.deployment.symbolic import (
+    register_extra_symbolics,
+    register_extra_symbolics_for_openvino,
+    unregister_extra_symbolics,
+    unregister_extra_symbolics_for_openvino
+)
 
 
 def get_min_opset_version():
@@ -253,3 +258,6 @@ def export_model(model, config, output_dir, target='openvino', onnx_opset=11,
         # Model check raises a Segmentation Fault in the latest (1.6.0, 1.7.0) versions of onnx package.
         # Even for a valid graph.
         # check_onnx_model(onnx_model_path)
+
+    unregister_extra_symbolics(onnx_opset)
+    unregister_extra_symbolics_for_openvino(onnx_opset)

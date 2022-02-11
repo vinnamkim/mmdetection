@@ -1,13 +1,11 @@
 # Description.
-model_template_id: Custom_Object_Detection_Gen3_VFNet
-name: VFNet
-task_type: DETECTION
+model_template_id: Custom_Counting_Instance_Segmentation_MaskRCNN_ResNet50
+name: MaskRCNN-ResNet50
+task_type: INSTANCE_SEGMENTATION
 task_family: VISION
 instantiation: "CLASS"
-summary: Model achieves the best accuracy but doubles the training time comparied to ATSS and has the slowest 
-  inference speed.
-application:
-  ~
+summary: Counting algorithm provides counting of objects and object instance masks. This model is based on MaskRCNN-ResNet50 which gives accurate predictions but slower during training and inference. 
+application: ~
 
 # Algo backend.
 framework: OTEDetection v2.9.1
@@ -32,7 +30,7 @@ hyper_parameters:
       learning_rate:
         default_value: 0.01
       learning_rate_warmup_iters:
-        default_value: 500
+        default_value: 200
       num_iters:
         default_value: 300
     nncf_optimization:
@@ -47,7 +45,9 @@ hyper_parameters:
 max_nodes: 1
 training_targets:
   - GPU
+  - CPU
 
+# TODO[EUGENE]: WIP
 # Stats.
-gigaflops: 457.4
-size: 126.0
+gigaflops: 533.8
+size: 177.9

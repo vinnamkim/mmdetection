@@ -4,7 +4,8 @@ name: ATSS
 task_type: DETECTION
 task_family: VISION
 instantiation: "CLASS"
-summary: ATSS with MobileNetV2 backbone.
+summary: Model with medium inference speed and comparable to SSD training time. Works well enough regardless of dataset 
+  size and difficulty.
 application:
   ~
 

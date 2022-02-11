@@ -26,7 +26,7 @@ from ote_sdk.configuration.helper.utils import ids_to_strings
 from ote_sdk.entities.datasets import DatasetEntity
 from ote_sdk.entities.metrics import (BarChartInfo, BarMetricsGroup, CurveMetric, LineChartInfo, LineMetricsGroup, MetricsGroup,
                                       ScoreMetric, VisualizationType)
-from ote_sdk.entities.model import ModelEntity, ModelPrecision, ModelStatus
+from ote_sdk.entities.model import ModelEntity, ModelPrecision
 from ote_sdk.entities.resultset import ResultSetEntity
 from ote_sdk.entities.subset import Subset
 from ote_sdk.entities.train_parameters import TrainParameters, default_progress_callback
@@ -148,7 +148,14 @@ class OTEDetectionTrainingTask(OTEDetectionInferenceTask, ITrainingTask):
         self._model.load_state_dict(checkpoint['state_dict'])
 
         # Get predictions on the validation set.
-        val_preds, val_map = self._infer_detector(self._model, config, val_dataset, dump_features=False, eval=True)
+        val_preds, val_map = self._infer_detector(
+            self._model,
+            config,
+            val_dataset,
+            metric_name=config.evaluation.metric,
+            dump_features=False,
+            eval=True
+        )
         preds_val_dataset = val_dataset.with_empty_annotations()
         self._add_predictions_to_dataset(val_preds, preds_val_dataset, 0.0)
         resultset = ResultSetEntity(
@@ -171,6 +178,7 @@ class OTEDetectionTrainingTask(OTEDetectionInferenceTask, ITrainingTask):
             metric = MetricsHelper.compute_f_measure(resultset, vary_confidence_threshold=False)
 
         # Compose performance statistics.
+        # TODO[EUGENE]: ADD MAE CURVE FOR TaskType.COUNTING
         performance = metric.get_performance()
         performance.dashboard_metrics.extend(self._generate_training_metrics(learning_curves, val_map))
         logger.info(f'Final model performance: {str(performance)}')
@@ -178,7 +186,6 @@ class OTEDetectionTrainingTask(OTEDetectionInferenceTask, ITrainingTask):
         # Save resulting model.
         self.save_model(output_model)
         output_model.performance = performance
-        output_model.model_status = ModelStatus.SUCCESS
 
         self._is_training = False
         logger.info('Training the model [done]')
