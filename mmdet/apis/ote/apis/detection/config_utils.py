@@ -14,9 +14,7 @@
 
 import copy
 import glob
-import logging
 import math
-import numpy as np
 import os
 import tempfile
 from collections import defaultdict
@@ -24,7 +22,7 @@ from typing import List, Optional
 
 from mmcv import Config, ConfigDict
 from ote_sdk.entities.datasets import DatasetEntity
-from ote_sdk.entities.label import LabelEntity
+from ote_sdk.entities.label import LabelEntity, Domain
 from ote_sdk.usecases.reporting.time_monitor_callback import TimeMonitorCallback
 
 from mmdet.apis.ote.extension.datasets.data_utils import get_anchor_boxes, get_sizes_from_dataset_entity, format_list_to_str
@@ -47,7 +45,7 @@ def is_epoch_based_runner(runner_config: ConfigDict):
     return 'Epoch' in runner_config.type
 
 
-def patch_config(config: Config, work_dir: str, labels: List[LabelEntity], random_seed: Optional[int] = None):
+def patch_config(config: Config, work_dir: str, labels: List[LabelEntity], domain: Domain, random_seed: Optional[int] = None):
     # Set runner if not defined.
     if 'runner' not in config:
         config.runner = {'type': 'EpochBasedRunner'}
@@ -82,7 +80,7 @@ def patch_config(config: Config, work_dir: str, labels: List[LabelEntity], rando
     remove_from_config(config, 'test_pipeline')
 
     # Patch data pipeline, making it OTE-compatible.
-    patch_datasets(config)
+    patch_datasets(config, domain)
 
     if 'log_config' not in config:
         config.log_config = ConfigDict()
@@ -256,7 +254,7 @@ def set_data_classes(config: Config, labels: List[LabelEntity]):
     # self.config.model.CLASSES = label_names
 
 
-def patch_datasets(config: Config):
+def patch_datasets(config: Config, domain):
 
     def patch_color_conversion(pipeline):
         # Default data format for OTE is RGB, while mmdet uses BGR, so negate the color conversion flag.
@@ -276,6 +274,7 @@ def patch_datasets(config: Config):
         if cfg.type == 'RepeatDataset':
             cfg = cfg.dataset
         cfg.type = 'OTEDataset'
+        cfg.domain = domain
         cfg.ote_dataset = None
         cfg.labels = None
         remove_from_config(cfg, 'ann_file')
@@ -285,6 +284,7 @@ def patch_datasets(config: Config):
                 pipeline_step.type = 'LoadImageFromOTEDataset'
             if pipeline_step.type == 'LoadAnnotations':
                 pipeline_step.type = 'LoadAnnotationFromOTEDataset'
+                pipeline_step.domain = domain
         patch_color_conversion(cfg.pipeline)
 
 
