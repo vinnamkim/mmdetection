@@ -246,12 +246,12 @@ class CocoDataset:
         return ann
 
 
-def find_label_by_name(labels, name):
+def find_label_by_name(labels, name, domain):
     matching_labels = [label for label in labels if label.name == name]
     if len(matching_labels) == 1:
         return matching_labels[0]
     elif len(matching_labels) == 0:
-        label = LabelEntity(name=name, domain=Domain.DETECTION, id=ID(len(labels)))
+        label = LabelEntity(name=name, domain=domain, id=ID(len(labels)))
         labels.append(label)
         return label
     else:
@@ -261,6 +261,7 @@ def find_label_by_name(labels, name):
 def load_dataset_items_coco_format(
     ann_file_path: str,
     data_root_dir: str,
+    domain: Domain,
     subset: Subset = Subset.NONE,
     labels_list: Optional[List[LabelEntity]] = None,
     with_mask: bool = False,
@@ -276,7 +277,7 @@ def load_dataset_items_coco_format(
     )
     coco_dataset.test_mode = False
     for label_name in coco_dataset.classes:
-        find_label_by_name(labels_list, label_name)
+        find_label_by_name(labels_list, label_name, domain)
 
     dataset_items = []
     for item in coco_dataset:
@@ -284,7 +285,7 @@ def load_dataset_items_coco_format(
         def create_gt_box(x1, y1, x2, y2, label_name):
             return Annotation(
                 Rectangle(x1=x1, y1=y1, x2=x2, y2=y2),
-                labels=[ScoredLabel(label=find_label_by_name(labels_list, label_name))],
+                labels=[ScoredLabel(label=find_label_by_name(labels_list, label_name, domain))],
             )
 
         def create_gt_polygon(polygon_group, label_name):
@@ -293,7 +294,7 @@ def load_dataset_items_coco_format(
 
             return Annotation(
                 Polygon(points=polygon_group[0]),
-                labels=[ScoredLabel(label=find_label_by_name(labels_list, label_name))],
+                labels=[ScoredLabel(label=find_label_by_name(labels_list, label_name, domain))],
             )
 
         img_height = item["img_info"].get("height")

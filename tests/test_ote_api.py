@@ -24,25 +24,21 @@ from subprocess import run  # nosec
 from typing import Optional
 
 import numpy as np
-import pytest
 import torch
 from bson import ObjectId
 from ote_sdk.test_suite.e2e_test_system import e2e_pytest_api
 from ote_sdk.configuration.helper import convert, create
-from ote_sdk.entities.annotation import Annotation, AnnotationSceneEntity, AnnotationSceneKind
+from ote_sdk.entities.annotation import AnnotationSceneEntity, AnnotationSceneKind
 from ote_sdk.entities.dataset_item import DatasetItemEntity
 from ote_sdk.entities.datasets import DatasetEntity
 from ote_sdk.entities.image import Image
 from ote_sdk.entities.inference_parameters import InferenceParameters
-from ote_sdk.entities.model_template import TaskType
+from ote_sdk.entities.model_template import TaskType, task_type_to_label_domain
 from ote_sdk.entities.metrics import Performance
-from ote_sdk.entities.model import ModelEntity, ModelFormat, ModelOptimizationType, ModelPrecision, OptimizationMethod
-from ote_sdk.entities.model_template import TargetDevice, parse_model_template
+from ote_sdk.entities.model import ModelEntity, ModelFormat, ModelOptimizationType
+from ote_sdk.entities.model_template import parse_model_template
 from ote_sdk.entities.optimization_parameters import OptimizationParameters
 from ote_sdk.entities.resultset import ResultSetEntity
-from ote_sdk.entities.shapes.ellipse import Ellipse
-from ote_sdk.entities.shapes.polygon import Point, Polygon
-from ote_sdk.entities.shapes.rectangle import Rectangle
 from ote_sdk.entities.subset import Subset
 from ote_sdk.entities.task_environment import TaskEnvironment
 from ote_sdk.entities.train_parameters import TrainParameters
@@ -121,7 +117,7 @@ class API(unittest.TestCase):
             task_type=TaskType.DETECTION):
 
         labels_names = ('rectangle', 'ellipse', 'triangle')
-        labels_schema = generate_label_schema(labels_names)
+        labels_schema = generate_label_schema(labels_names, task_type_to_label_domain(task_type))
         labels_list = labels_schema.get_labels(False)
         environment = TaskEnvironment(model=None, hyper_parameters=params, label_schema=labels_schema,
                                       model_template=model_template)
