@@ -7,6 +7,7 @@ from mmcv.ops.nms import batched_nms
 
 from mmdet.core import (MlvlPointGenerator, bbox_xyxy_to_cxcywh,
                         build_assigner, build_sampler, multi_apply)
+from mmdet.core import multiclass_nms
 from .base_dense_head import BaseDenseHead
 from .dense_test_mixins import BBoxTestMixin
 from ..builder import HEADS, build_loss
@@ -272,7 +273,8 @@ class YOLOXHead(BaseDenseHead, BBoxTestMixin):
             bboxes = flatten_bboxes[img_id]
 
             result_list.append(
-                self._bboxes_nms(cls_scores, bboxes, score_factor, cfg))
+                multiclass_nms(bboxes, cls_scores, cfg.score_thr, cfg.nms,
+                               max_num=cfg.max_per_img, score_factors=score_factor))
 
         return result_list
 

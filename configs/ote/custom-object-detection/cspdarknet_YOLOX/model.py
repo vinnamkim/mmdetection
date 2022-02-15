@@ -26,7 +26,8 @@ model = dict(
     # 0.01, and the threshold of the test phase is 0.001.
     test_cfg=dict(
         score_thr=0.01,
-        nms=dict(type='nms', iou_threshold=0.65)))
+        nms=dict(type='nms', iou_threshold=0.65),
+        max_per_img=100))
 
 evaluation = dict(interval=1, metric='mAP', save_best='mAP')
 optimizer = dict(
