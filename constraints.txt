@@ -91,7 +91,7 @@ scikit-image==0.17.2
 scikit-learn==0.24.2
 scipy==1.5.4
 sentencepiece==0.1.96
-Shapely==1.7.1
+Shapely==1.8.0
 six==1.15.0
 sklearn==0.0
 sty==1.0.0b12
