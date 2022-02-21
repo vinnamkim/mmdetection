@@ -1,7 +1,7 @@
 # Copyright (c) 2018-2021 OpenMMLab
 # SPDX-License-Identifier: Apache-2.0
 #
-# Copyright (C) 2020-2021 Intel Corporation
+# Copyright (C) 2020-2022 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 #
 
@@ -13,6 +13,7 @@ import time
 import warnings
 
 import mmcv
+import mmdet
 import torch.distributed as dist
 from mmcv.runner.utils import get_host_info
 from mmcv.runner import RUNNERS, EpochBasedRunner, IterBasedRunner, IterLoader, get_dist_info
@@ -28,6 +29,7 @@ class EpochRunnerWithCancel(EpochBasedRunner):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.should_stop = False
+        self.should_validate = True
         _, world_size = get_dist_info()
         self.distributed = True if world_size > 1 else False
 
@@ -61,10 +63,15 @@ class EpochRunnerWithCancel(EpochBasedRunner):
             if self.stop():
                 break
             self._iter += 1
-
+        if not self.should_validate and self.should_stop:
+            # if training stopped due to loss nan, there is no sense in validation
+            for hook in self._hooks:
+                if isinstance(hook, mmdet.core.evaluation.eval_hooks.EvalHook):
+                    self._hooks.remove(hook)
         self.call_hook('after_train_epoch')
         self.stop()
         self._epoch += 1
+
 
 
 @RUNNERS.register_module()
@@ -75,6 +82,10 @@ class IterBasedRunnerWithCancel(IterBasedRunner):
 
     # TODO: Implement cancelling of training via keyboard interrupt signal, instead of should_stop
     """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.should_validate = True
+        self.should_stop = False
 
     def main_loop(self, workflow, iter_loaders, **kwargs):
         while self.iter < self._max_iters:
@@ -118,6 +129,11 @@ class IterBasedRunnerWithCancel(IterBasedRunner):
 
         self.should_stop = False
         self.main_loop(workflow, iter_loaders, **kwargs)
+        if not self.should_validate and self.should_stop:
+            # if training stopped due to loss nan, there is no sense in validation
+            for hook in self._hooks:
+                if isinstance(hook, mmdet.core.evaluation.eval_hooks.EvalHook):
+                    self._hooks.remove(hook)
         self.should_stop = False
 
         time.sleep(1)  # wait for some hooks like loggers to finish

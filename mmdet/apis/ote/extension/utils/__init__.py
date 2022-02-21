@@ -1,4 +1,4 @@
-# Copyright (C) 2021 Intel Corporation
+# Copyright (C) 2021-2022 Intel Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,10 +13,10 @@
 # and limitations under the License.
 
 from .hooks import CancelTrainingHook, FixedMomentumUpdaterHook, OTELoggerHook, OTEProgressHook
-from .hooks import EarlyStoppingHook, ReduceLROnPlateauLrUpdaterHook
+from .hooks import EarlyStoppingHook, ReduceLROnPlateauLrUpdaterHook, StopLossNanTrainingHook
 from .pipelines import LoadImageFromOTEDataset, LoadAnnotationFromOTEDataset
 from .runner import EpochRunnerWithCancel
 
 __all__ = [CancelTrainingHook, FixedMomentumUpdaterHook, LoadImageFromOTEDataset, EpochRunnerWithCancel,
            LoadAnnotationFromOTEDataset, OTELoggerHook, OTEProgressHook, EarlyStoppingHook,
-           ReduceLROnPlateauLrUpdaterHook]
+           ReduceLROnPlateauLrUpdaterHook, StopLossNanTrainingHook]
