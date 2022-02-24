@@ -1,3 +1,10 @@
+# Copyright (C) 2020 Facebook, Inc. and its affiliates. All Rights Reserved
+# SPDX-License-Identifier: Apache-2.0
+#
+# Copyright (C) 2018-2021 OpenMMLab
+# SPDX-License-Identifier: Apache-2.0
+#
+
 import bisect
 import math
 from collections import defaultdict

@@ -1,3 +1,10 @@
+# Copyright (c) 2020 Peize Sun
+# SPDX-License-Identifier: MIT
+#
+# Copyright (C) 2018-2021 OpenMMLab
+# SPDX-License-Identifier: Apache-2.0
+#
+
 import torch
 import torch.nn as nn
 from mmcv.cnn import (Linear, build_activation_layer, build_norm_layer,
