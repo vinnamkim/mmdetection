@@ -117,8 +117,7 @@ pip install -e . || exit 1
 MMDETECTION_DIR=`realpath .`
 echo "export MMDETECTION_DIR=${MMDETECTION_DIR}" >> ${venv_dir}/bin/activate
 
-# Install NNCF
-pip install -r requirements/nncf_compression.txt || exit 1
+# Build NNCF extensions
 echo "Build NNCF extensions ..."
 python -c "import nncf"
 
