@@ -29,6 +29,7 @@ from mmcv.runner import load_checkpoint, load_state_dict
 from mmcv.utils import Config
 from ote_sdk.entities.annotation import Annotation
 from ote_sdk.entities.datasets import DatasetEntity
+from ote_sdk.entities.id import ID
 from ote_sdk.entities.inference_parameters import InferenceParameters, default_progress_callback
 from ote_sdk.entities.model import ModelEntity, ModelFormat, ModelOptimizationType, ModelPrecision
 from ote_sdk.entities.model_template import TaskType, task_type_to_label_domain
@@ -213,7 +214,7 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
                                 box_points = cv2.boxPoints(cv2.minAreaRect(contour))
                                 points = [Point(x=point[0] / width, y=point[1] / height) for point in box_points]
                             labels = [ScoredLabel(self._labels[label_idx], probability=probability)]
-                            shapes.append(Annotation(Polygon(points=points), labels=labels, id=label_idx))
+                            shapes.append(Annotation(Polygon(points=points), labels=labels, id=ID(f"{label_idx:08}")))
             else:
                 raise RuntimeError(
                     f"Detection results assignment not implemented for task: {self._task_type}")

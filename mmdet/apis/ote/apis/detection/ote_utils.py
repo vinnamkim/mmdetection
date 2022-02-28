@@ -21,6 +21,7 @@ from typing import Callable, Union
 import numpy as np
 import yaml
 from ote_sdk.entities.color import Color
+from ote_sdk.entities.id import ID
 from ote_sdk.entities.label import Domain, LabelEntity
 from ote_sdk.entities.label_schema import LabelGroup, LabelGroupType, LabelSchemaEntity
 from ote_sdk.entities.train_parameters import UpdateProgressCallback
@@ -70,10 +71,10 @@ class ColorPalette:
 
 def generate_label_schema(label_names, label_domain=Domain.DETECTION):
     colors = ColorPalette(len(label_names)) if len(label_names) > 0 else []
-    not_empty_labels = [LabelEntity(name=name, color=colors[i], domain=label_domain, id=i) for i, name in
+    not_empty_labels = [LabelEntity(name=name, color=colors[i], domain=label_domain, id=ID(f"{i:08}")) for i, name in
                         enumerate(label_names)]
     emptylabel = LabelEntity(name=f"Empty label", color=Color(42, 43, 46),
-                       is_empty=True, domain=label_domain, id=len(not_empty_labels))
+                             is_empty=True, domain=label_domain, id=ID(f"{len(not_empty_labels):08}"))
 
     label_schema = LabelSchemaEntity()
     exclusive_group = LabelGroup(name="labels", labels=not_empty_labels, group_type=LabelGroupType.EXCLUSIVE)
