@@ -4,7 +4,7 @@ name: Face Detection 0206
 task_type: DETECTION
 task_family: VISION
 instantiation: "CLASS"
-summary: Face Detection based on ResNet152 (ATSS).
+summary: The most accurate Face Detection model with the best accuracy on the small and difficult faces (ResNet152-ATSS).
 application: Face detection
 
 # Algo backend.

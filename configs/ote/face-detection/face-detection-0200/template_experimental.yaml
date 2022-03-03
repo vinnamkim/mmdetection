@@ -4,7 +4,7 @@ name: Face Detection 0200
 task_type: DETECTION
 task_family: VISION
 instantiation: "CLASS"
-summary: Face Detection based on MobileNetV2 (SSD).
+summary: Fastest Face Detection for easy and focused faces (MobileNetV2-SSD).
 application: Face detection
 
 # Algo backend.

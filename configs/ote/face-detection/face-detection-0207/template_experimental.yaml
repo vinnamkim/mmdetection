@@ -4,7 +4,7 @@ name: Face Detection 0207
 task_type: DETECTION
 task_family: VISION
 instantiation: "CLASS"
-summary: Face Detection based on ShuffleNetV2 (SSD).
+summary: One of the fastest Face Detection model (ShuffleNetV2-SSD).
 application: Face detection
 
 # Algo backend.
