@@ -16,6 +16,10 @@ entrypoints:
   openvino: mmdet.apis.ote.apis.detection.OpenVINODetectionTask
   nncf: mmdet.apis.ote.apis.detection.OTEDetectionNNCFTask
 
+# Capabilities.
+capabilities:
+  - compute_representations
+
 # Hyperparameters.
 hyper_parameters:
   base_path: ../../../../mmdet/apis/ote/apis/detection/configuration.yaml
