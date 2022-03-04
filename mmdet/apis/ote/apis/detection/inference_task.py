@@ -30,7 +30,7 @@ from mmcv.utils import Config
 from ote_sdk.entities.annotation import Annotation
 from ote_sdk.entities.datasets import DatasetEntity
 from ote_sdk.entities.inference_parameters import InferenceParameters, default_progress_callback
-from ote_sdk.entities.model import ModelEntity, ModelFormat, ModelOptimizationType, ModelPrecision
+from ote_sdk.entities.model import ModelEntity, ModelFormat, ModelOptimizationType, ModelPrecision, OptimizationMethod
 from ote_sdk.entities.model_template import TaskType, task_type_to_label_domain
 from ote_sdk.entities.resultset import ResultSetEntity
 from ote_sdk.entities.scored_label import ScoredLabel
@@ -379,7 +379,9 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
                     model = self._model.cuda(self._config.gpu_ids[0])
                 else:
                     model = self._model.cpu()
-                export_model(model, self._config, tempdir, target='openvino')
+                pruning_transformation = OptimizationMethod.FILTER_PRUNING in self._optimization_methods
+                export_model(model, self._config, tempdir, target='openvino',
+                             pruning_transformation=pruning_transformation)
                 bin_file = [f for f in os.listdir(tempdir) if f.endswith('.bin')][0]
                 xml_file = [f for f in os.listdir(tempdir) if f.endswith('.xml')][0]
                 with open(os.path.join(tempdir, bin_file), "rb") as f:
