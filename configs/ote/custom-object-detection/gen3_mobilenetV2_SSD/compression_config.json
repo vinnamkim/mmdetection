@@ -39,6 +39,13 @@
     },
     "nncf_quantization_pruning": {
         "nncf_config": {
+            "accuracy_aware_training": {
+                "mode": "adaptive_compression_level",
+                    "params": {
+                        "initial_training_phase_epochs": 30,
+                        "patience_epochs": 10
+                    }
+            },
             "compression": [
                 {
                     "algorithm": "filter_pruning",
