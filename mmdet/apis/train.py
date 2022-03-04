@@ -229,6 +229,8 @@ def train_detector(model,
             assert isinstance(hook_cfg, dict), \
                 'Each item in custom_hooks expects dict type, but got ' \
                 f'{type(hook_cfg)}'
+            if nncf_is_acc_aware_training_set and hook_cfg.get('type') == 'EarlyStoppingHook':
+                continue
             hook_cfg = hook_cfg.copy()
             priority = hook_cfg.pop('priority', 'NORMAL')
             hook = build_from_cfg(hook_cfg, HOOKS)
