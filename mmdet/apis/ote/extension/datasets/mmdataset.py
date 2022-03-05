@@ -32,7 +32,8 @@ from mmdet.datasets.pipelines import Compose
 def get_annotation_mmdet_format(
     dataset_item: DatasetItemEntity,
     labels: List[LabelEntity],
-    domain: Domain
+    domain: Domain,
+    min_size: int = -1,
 ) -> dict:
     """
     Function to convert a OTE annotation to mmdetection format. This is used both in the OTEDataset class defined in
@@ -54,6 +55,9 @@ def get_annotation_mmdet_format(
     for annotation in dataset_item.get_annotations(labels=labels, include_empty=False):
 
         box = ShapeFactory.shape_as_rectangle(annotation.shape)
+
+        if min(box.width * width, box.height * height) < min_size:
+            continue
 
         class_indices = [
             label_idx[label.id]
@@ -128,13 +132,12 @@ class OTEDataset(CustomDataset):
 
             return data_info
 
-    def __init__(self, ote_dataset: DatasetEntity, labels: List[LabelEntity], pipeline, domain, test_mode: bool = False, min_size=None):
+    def __init__(self, ote_dataset: DatasetEntity, labels: List[LabelEntity], pipeline, domain, test_mode: bool = False):
         self.ote_dataset = ote_dataset
         self.labels = labels
         self.CLASSES = list(label.name for label in labels)
         self.domain = domain
         self.test_mode = test_mode
-        self.min_size = min_size
 
         # Instead of using list data_infos as in CustomDataset, this implementation of dataset
         # uses a proxy class with overriden __len__ and __getitem__; this proxy class
@@ -177,8 +180,6 @@ class OTEDataset(CustomDataset):
         :return dict: Training data and annotation after pipeline with new keys introduced by pipeline.
         """
         item = deepcopy(self.data_infos[idx])
-        if self.min_size:
-            item = self.filter_small_gt(item)
         self.pre_pipeline(item)
         return self.pipeline(item)
 
@@ -213,26 +214,3 @@ class OTEDataset(CustomDataset):
         labels = self.labels
         return get_annotation_mmdet_format(dataset_item, labels, self.domain)
 
-    def filter_small_gt(self, item: dict) -> dict:
-        """
-        Function to filter instances in DatasetItem if its width or height is smaller than self.min_size
-
-        :param item: 'data_info' dict that represents the DatasetItem
-        :return dict: the same dict with filtered instances
-        """
-        dataset_item = item['dataset_item']
-        width, height = dataset_item.width, dataset_item.height
-        filtered_anns = []
-
-        for ann in dataset_item.get_annotations():
-            box = ann.shape
-            if min(box.width * width, box.height * height) >= self.min_size:
-                filtered_anns.append(ann)
-        if len(filtered_anns) == 0:
-            print(f'All instances on the image are smaller than min_size={self.min_size} - the image was skipped')
-            annotations = NullAnnotationSceneEntity()
-        else:
-            annotations = AnnotationSceneEntity(annotations=filtered_anns, kind=AnnotationSceneKind.ANNOTATION)
-
-        item['dataset_item'] = DatasetItemEntity(media=dataset_item.media, annotation_scene=annotations)
-        return item
