@@ -487,6 +487,10 @@ class ReduceLROnPlateauLrUpdaterHook(LrUpdaterHook):
         self.base_lr = [
             group['lr'] for group in runner.optimizer.param_groups
         ]
+        self.bad_count = 0
+        self.last_iter = 0
+        self.current_lr = None
+        self.best_score = self.init_value_map[self.rule]
 
 
 @HOOKS.register_module()

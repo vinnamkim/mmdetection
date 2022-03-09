@@ -37,7 +37,33 @@
             }
         }
     },
-	"order_of_parts": [
-		"nncf_quantization"
+    "nncf_quantization_pruning": {
+        "nncf_config": {
+            "compression": [
+                {
+                    "algorithm": "filter_pruning",
+                    "params": {
+                        "schedule": "baseline",
+                        "pruning_flops_target": 0.2,
+                        "filter_importance": "geometric_median"
+                    }
+                },
+                {
+                    "algorithm": "quantization",
+                    "initializer": {
+                        "range": {
+                            "num_init_samples": 300
+                        },
+                        "batchnorm_adaptation": {
+                            "num_bn_adaptation_samples": 300
+                        }
+                    }
+                }
+            ]
+        }
+    },
+    "order_of_parts": [
+        "nncf_quantization",
+        "nncf_quantization_pruning"
     ]
 }

@@ -1,3 +1,10 @@
+# Copyright (c) 2019, Princeton University
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright (C) 2018-2021 OpenMMLab
+# SPDX-License-Identifier: Apache-2.0
+#
+
 from math import sqrt
 
 import torch

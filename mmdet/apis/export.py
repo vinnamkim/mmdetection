@@ -139,7 +139,8 @@ def _get_mo_cmd():
     raise RuntimeError('OpenVINO Model Optimizer is not found or configured improperly')
 
 def export_to_openvino(cfg, onnx_model_path, output_dir_path, input_shape=None,
-                       input_format='bgr', precision='FP32', with_text=False):
+                       input_format='bgr', precision='FP32', with_text=False,
+                       pruning_transformation=False):
     cfg.model.pretrained = None
     cfg.data.test.test_mode = True
 
@@ -175,6 +176,8 @@ def export_to_openvino(cfg, onnx_model_path, output_dir_path, input_shape=None,
     if normalize['to_rgb'] and input_format.lower() == 'bgr' or \
             not normalize['to_rgb'] and input_format.lower() == 'rgb':
         command_line.append('--reverse_input_channels')
+    if pruning_transformation:
+        command_line.extend(['--transform', 'Pruning'])
 
     print(' '.join(command_line))
 
@@ -215,7 +218,8 @@ def optimize_onnx_graph(onnx_model_path):
 
 
 def export_model(model, config, output_dir, target='openvino', onnx_opset=11,
-                 input_shape=None, input_format='bgr', precision='FP32', alt_ssd_export=False):
+                 input_shape=None, input_format='bgr', precision='FP32', alt_ssd_export=False,
+                 pruning_transformation=False):
     assert onnx_opset in available_opsets
     assert onnx_opset >= get_min_opset_version()
 
@@ -252,7 +256,7 @@ def export_model(model, config, output_dir, target='openvino', onnx_opset=11,
         else:
             input_shape = list(fake_data['img'][0].shape)
         export_to_openvino(cfg, onnx_model_path, output_dir, input_shape, input_format, precision,
-                           with_text=with_text)
+                           with_text=with_text, pruning_transformation=pruning_transformation)
     else:
         pass
         # Model check raises a Segmentation Fault in the latest (1.6.0, 1.7.0) versions of onnx package.
