@@ -13,7 +13,6 @@ import time
 import warnings
 
 import mmcv
-import mmdet
 import torch.distributed as dist
 from mmcv.runner.utils import get_host_info
 from mmcv.runner import RUNNERS, EpochBasedRunner, IterBasedRunner, IterLoader, get_dist_info
