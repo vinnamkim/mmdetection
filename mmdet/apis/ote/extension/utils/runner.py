@@ -67,7 +67,6 @@ class EpochRunnerWithCancel(EpochBasedRunner):
         self._epoch += 1
 
 
-
 @RUNNERS.register_module()
 class IterBasedRunnerWithCancel(IterBasedRunner):
     """
