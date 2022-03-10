@@ -136,3 +136,81 @@ SOFTWARE.
 11. scatter_cpu, scatter_kwargs
     Copyright (C) 2016-2021 Facebook, Inc
     SPDX-License-Identifier: BSD-3-Clause
+
+-------------------------------------------------------------
+
+12. NiceRepr
+    Copyright (c) 2017-2022 Jon Crall
+    SPDX-License-Identifier: Apache-2.0
+
+-------------------------------------------------------------
+
+13. NMSop
+    Copyright (c) 2018-2021 OpenMMLab
+    SPDX-License-Identifier: Apache-2.0
+
+-------------------------------------------------------------
+
+14. LVISV05Dataset.evaluate
+    Copyright (C) 2020 Facebook, Inc. and its affiliates. All Rights Reserved
+    SPDX-License-Identifier: Apache-2.0
+
+-------------------------------------------------------------
+
+15. ClassBalancedDataset
+    Copyright (C) 2020 Facebook, Inc. and its affiliates. All Rights Reserved
+    SPDX-License-Identifier: Apache-2.0
+
+-------------------------------------------------------------
+
+16. CocoDataset.evaluate
+    Copyright (C) 2020 Facebook, Inc. and its affiliates. All Rights Reserved
+    SPDX-License-Identifier: Apache-2.0
+
+-------------------------------------------------------------
+
+17. CityscapesDataset
+    Copyright (C) 2020 Facebook, Inc. and its affiliates. All Rights Reserved
+    SPDX-License-Identifier: Apache-2.0
+
+-------------------------------------------------------------
+
+18. AssociativeEmbeddingLoss, GaussianFocalLoss, CornerHead
+    Copyright (c) 2018, University of Michigan
+    SPDX-License-Identifier: BSD-3-Clause
+
+-------------------------------------------------------------
+
+19. gaussian_radius
+    Copyright (c) 2019, Princeton University
+    SPDX-License-Identifier: BSD-3-Clause
+
+-------------------------------------------------------------
+
+20. DynamicConv
+    Copyright (c) 2020 Peize Sun
+    SPDX-License-Identifier: MIT
+
+-------------------------------------------------------------
+
+21. MaskPointHead
+    Copyright (C) 2020 Facebook, Inc. and its affiliates. All Rights Reserved
+    SPDX-License-Identifier: Apache-2.0
+
+-------------------------------------------------------------
+
+22. FCNMaskHead
+    Copyright (C) 2020 Facebook, Inc. and its affiliates. All Rights Reserved
+    SPDX-License-Identifier: Apache-2.0
+
+-------------------------------------------------------------
+
+23. EpochRunnerWithCancel, IterBasedRunnerWithCancel
+    Copyright (c) 2018-2021 OpenMMLab
+    SPDX-License-Identifier: Apache-2.0
+
+-------------------------------------------------------------
+
+24. PolygonMasks.areas
+    Copyright (C) 2020 Facebook, Inc. and its affiliates. All Rights Reserved
+    SPDX-License-Identifier: Apache-2.0

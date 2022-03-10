@@ -25,12 +25,13 @@ import cv2
 import numpy as np
 import torch
 from mmcv.parallel import MMDataParallel
-from mmcv.runner import load_checkpoint
+from mmcv.runner import load_checkpoint, load_state_dict
 from mmcv.utils import Config
 from ote_sdk.entities.annotation import Annotation
 from ote_sdk.entities.datasets import DatasetEntity
+from ote_sdk.entities.id import ID
 from ote_sdk.entities.inference_parameters import InferenceParameters, default_progress_callback
-from ote_sdk.entities.model import ModelEntity, ModelFormat, ModelOptimizationType, ModelPrecision
+from ote_sdk.entities.model import ModelEntity, ModelFormat, ModelOptimizationType, ModelPrecision, OptimizationMethod
 from ote_sdk.entities.model_template import TaskType, task_type_to_label_domain
 from ote_sdk.entities.resultset import ResultSetEntity
 from ote_sdk.entities.scored_label import ScoredLabel
@@ -126,7 +127,7 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
             model = self._create_model(self._config, from_scratch=True)
 
             try:
-                model.load_state_dict(model_data['model'])
+                load_state_dict(model, model_data['model'])
                 logger.info(f"Loaded model weights from Task Environment")
                 logger.info(f"Model architecture: {self._model_name}")
             except BaseException as ex:
@@ -213,7 +214,7 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
                                 box_points = cv2.boxPoints(cv2.minAreaRect(contour))
                                 points = [Point(x=point[0] / width, y=point[1] / height) for point in box_points]
                             labels = [ScoredLabel(self._labels[label_idx], probability=probability)]
-                            shapes.append(Annotation(Polygon(points=points), labels=labels, id=label_idx))
+                            shapes.append(Annotation(Polygon(points=points), labels=labels, id=ID(f"{label_idx:08}")))
             else:
                 raise RuntimeError(
                     f"Detection results assignment not implemented for task: {self._task_type}")
@@ -379,7 +380,9 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
                     model = self._model.cuda(self._config.gpu_ids[0])
                 else:
                     model = self._model.cpu()
-                export_model(model, self._config, tempdir, target='openvino')
+                pruning_transformation = OptimizationMethod.FILTER_PRUNING in self._optimization_methods
+                export_model(model, self._config, tempdir, target='openvino',
+                             pruning_transformation=pruning_transformation)
                 bin_file = [f for f in os.listdir(tempdir) if f.endswith('.bin')][0]
                 xml_file = [f for f in os.listdir(tempdir) if f.endswith('.xml')][0]
                 with open(os.path.join(tempdir, bin_file), "rb") as f:

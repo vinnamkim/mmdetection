@@ -1,9 +1,13 @@
+# Copyright (C) 2020 Facebook, Inc. and its affiliates. All Rights Reserved
+# SPDX-License-Identifier: Apache-2.0
+#
 # Copyright (C) 2018-2021 OpenMMLab
 # SPDX-License-Identifier: Apache-2.0
 #
 # Copyright (C) 2020-2021 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 #
+
 import copy
 import itertools
 import logging

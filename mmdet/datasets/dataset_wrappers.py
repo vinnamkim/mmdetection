@@ -1,9 +1,16 @@
+# Copyright (C) 2020 Facebook, Inc. and its affiliates. All Rights Reserved
+# SPDX-License-Identifier: Apache-2.0
+#
+# Copyright (C) 2018-2021 OpenMMLab
+# SPDX-License-Identifier: Apache-2.0
+#
+
+import bisect
 import collections
 import math
 from collections import defaultdict
-
-import bisect
 import copy
+
 import numpy as np
 from mmcv.utils import build_from_cfg, print_log
 from torch.utils.data.dataset import ConcatDataset as _ConcatDataset
@@ -86,7 +93,7 @@ class ConcatDataset(_ConcatDataset):
         # Check whether all the datasets support evaluation
         for dataset in self.datasets:
             assert hasattr(dataset, 'evaluate'), \
-                f'{type(dataset)} does not implement evaluate function'
+                    f'{type(dataset)} does not implement evaluate function'
 
         if self.separate_eval:
             dataset_idx = -1

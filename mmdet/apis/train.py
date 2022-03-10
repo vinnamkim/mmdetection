@@ -19,7 +19,7 @@ from mmdet.core import (DistEvalHook, DistEvalPlusBeforeRunHook, EvalHook,
 from mmdet.integration.nncf import CompressionHook
 from mmdet.integration.nncf import CheckpointHookBeforeTraining
 from mmdet.integration.nncf import wrap_nncf_model
-from mmdet.integration.nncf import AccuracyAwareRunner
+from mmdet.integration.nncf import AccuracyAwareLrUpdater
 from mmdet.integration.nncf import is_accuracy_aware_training_set
 from mmcv.utils import build_from_cfg
 
@@ -186,9 +186,17 @@ def train_detector(model,
         optimizer_config = cfg.optimizer_config
 
     # register hooks
-    runner.register_training_hooks(cfg.lr_config, optimizer_config,
+    runner.register_training_hooks(None, optimizer_config,
                                    cfg.checkpoint_config, cfg.log_config,
                                    cfg.get('momentum_config', None))
+    # register lr updater hook
+    policy_type = cfg.lr_config.pop('policy')
+    if policy_type == policy_type.lower():
+        policy_type = policy_type.title()
+    cfg.lr_config['type'] = policy_type + 'LrUpdaterHook'
+    lr_updater_hook = build_from_cfg(cfg.lr_config, HOOKS)
+    runner.register_lr_hook(lr_updater_hook)
+
     if distributed:
         if isinstance(runner, EpochBasedRunner):
             runner.register_hook(DistSamplerSeedHook())
@@ -221,6 +229,8 @@ def train_detector(model,
             assert isinstance(hook_cfg, dict), \
                 'Each item in custom_hooks expects dict type, but got ' \
                 f'{type(hook_cfg)}'
+            if nncf_is_acc_aware_training_set and hook_cfg.get('type') == 'EarlyStoppingHook':
+                continue
             hook_cfg = hook_cfg.copy()
             priority = hook_cfg.pop('priority', 'NORMAL')
             hook = build_from_cfg(hook_cfg, HOOKS)
@@ -232,7 +242,8 @@ def train_detector(model,
     if nncf_is_acc_aware_training_set:
         def configure_optimizers_fn():
             optimizer = build_optimizer(runner.model, cfg.optimizer)
-            return optimizer, None
+            lr_scheduler = AccuracyAwareLrUpdater(lr_updater_hook, runner, optimizer)
+            return optimizer, lr_scheduler
 
         runner.run(data_loaders, cfg.workflow,
                    compression_ctrl=compression_ctrl,
