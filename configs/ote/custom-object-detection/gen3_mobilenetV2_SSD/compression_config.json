@@ -42,8 +42,8 @@
             "accuracy_aware_training": {
                 "mode": "adaptive_compression_level",
                     "params": {
-                        "initial_training_phase_epochs": 30,
-                        "patience_epochs": 10
+                        "initial_training_phase_epochs": 5,
+                        "patience_epochs": 5
                     }
             },
             "compression": [
@@ -54,7 +54,7 @@
                     ],
                     "params": {
                         "schedule": "baseline",
-                        "pruning_flops_target": 0.3,
+                        "pruning_flops_target": 0.1,
                         "filter_importance": "geometric_median"
                     }
                 },
