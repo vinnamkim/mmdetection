@@ -1,7 +1,7 @@
 # Copyright (c) 2018-2021 OpenMMLab
 # SPDX-License-Identifier: Apache-2.0
 #
-# Copyright (C) 2020-2021 Intel Corporation
+# Copyright (C) 2020-2022 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 #
 
@@ -61,7 +61,6 @@ class EpochRunnerWithCancel(EpochBasedRunner):
             if self.stop():
                 break
             self._iter += 1
-
         self.call_hook('after_train_epoch')
         self.stop()
         self._epoch += 1
@@ -75,6 +74,9 @@ class IterBasedRunnerWithCancel(IterBasedRunner):
 
     # TODO: Implement cancelling of training via keyboard interrupt signal, instead of should_stop
     """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.should_stop = False
 
     def main_loop(self, workflow, iter_loaders, **kwargs):
         while self.iter < self._max_iters:
