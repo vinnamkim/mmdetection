@@ -30,7 +30,8 @@ from mmdet.datasets.pipelines import Compose
 def get_annotation_mmdet_format(
     dataset_item: DatasetItemEntity,
     labels: List[LabelEntity],
-    domain: Domain
+    domain: Domain,
+    min_size: int = -1,
 ) -> dict:
     """
     Function to convert a OTE annotation to mmdetection format. This is used both in the OTEDataset class defined in
@@ -52,6 +53,9 @@ def get_annotation_mmdet_format(
     for annotation in dataset_item.get_annotations(labels=labels, include_empty=False):
 
         box = ShapeFactory.shape_as_rectangle(annotation.shape)
+
+        if min(box.width * width, box.height * height) < min_size:
+            continue
 
         class_indices = [
             label_idx[label.id]
@@ -207,3 +211,4 @@ class OTEDataset(CustomDataset):
         dataset_item = self.ote_dataset[idx]
         labels = self.labels
         return get_annotation_mmdet_format(dataset_item, labels, self.domain)
+

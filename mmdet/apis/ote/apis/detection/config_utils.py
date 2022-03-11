@@ -285,6 +285,7 @@ def patch_datasets(config: Config, domain):
             if pipeline_step.type == 'LoadAnnotations':
                 pipeline_step.type = 'LoadAnnotationFromOTEDataset'
                 pipeline_step.domain = domain
+                pipeline_step.min_size = cfg.pop('min_size', -1)
         patch_color_conversion(cfg.pipeline)
 
 

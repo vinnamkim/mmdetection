@@ -21,11 +21,12 @@
             "momentum": 0.9,
             "weight_decay": 0.0005
         },
-        "lr_config": {
-            "_delete_": true,
-            "policy": "fixed"
+        "runner": {
+            "max_epochs": 5
         },
-        "total_epochs": 5,
+        "data": {
+            "samples_per_gpu": 28
+        },
         "nncf_config": {
             "compression": [
                 {
@@ -53,7 +54,9 @@
             "warmup_ratio": 0.1,
             "step": [50, 80]
         },
-        "total_epochs": 100,
+        "runner": {
+            "max_epochs": 100
+        },
         "nncf_config": {
             "compression": [
                 {
