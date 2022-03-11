@@ -16,8 +16,6 @@ from copy import deepcopy
 from typing import List
 
 import numpy as np
-from ote_sdk.entities.annotation import AnnotationSceneEntity, AnnotationSceneKind, Annotation,\
-    NullAnnotationSceneEntity
 from ote_sdk.entities.dataset_item import DatasetItemEntity
 from ote_sdk.entities.datasets import DatasetEntity
 from ote_sdk.entities.label import Domain, LabelEntity
