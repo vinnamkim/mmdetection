@@ -39,12 +39,19 @@
     },
     "nncf_quantization_pruning": {
         "nncf_config": {
+            "accuracy_aware_training": {
+                "mode": "adaptive_compression_level",
+                    "params": {
+                        "initial_training_phase_epochs": 5,
+                        "patience_epochs": 5
+                    }
+            },
             "compression": [
                 {
                     "algorithm": "filter_pruning",
                     "params": {
                         "schedule": "baseline",
-                        "pruning_flops_target": 0.2,
+                        "pruning_flops_target": 0.1,
                         "filter_importance": "geometric_median"
                     }
                 },
