@@ -22,11 +22,34 @@ from pytorchcv.model_provider import _models
 from pytorchcv.models.model_store import download_model
 from torch import distributed
 from torch.nn.modules.batchnorm import _BatchNorm
+from mmcv.cnn import build_activation_layer, build_norm_layer
 from mmcv.runner import get_dist_info
 
 from mmdet.utils.logger import get_root_logger
 
 from ..builder import BACKBONES
+
+
+def replace_activation(model, activation_cfg):
+    for name, module in model._modules.items():
+        if len(list(module.children())) > 0:
+            model._modules[name] = replace_activation(module, activation_cfg)
+        if name == 'activ':
+            if activation_cfg['type'] == 'torch_swish':
+                model._modules[name] = nn.SiLU()
+            else:
+                model._modules[name] = build_activation_layer(activation_cfg)
+    return model
+
+
+def replace_norm(model, cfg):
+    for name, module in model._modules.items():
+        if len(list(module.children())) > 0:
+            model._modules[name] = replace_norm(module, cfg)
+        if name == 'bn':
+            model._modules[name] = build_norm_layer(
+                cfg, num_features=module.num_features)[1]
+    return model
 
 
 def generate_backbones():
@@ -95,7 +118,7 @@ def generate_backbones():
                             m.eval()
 
             class custom_model_getter(nn.Module):
-                def __init__(self, *args, out_indices=None, frozen_stages=0, norm_eval=False, verbose=False, **kwargs):
+                def __init__(self, *args, out_indices=None, frozen_stages=0, norm_eval=False, verbose=False, activation_cfg=None, norm_cfg=None, **kwargs):
                     super().__init__()
                     models_cache_root = kwargs.get('root', os.path.join('~', '.torch', 'models'))
                     is_pretrained = kwargs.get('pretrained', False)
@@ -108,6 +131,10 @@ def generate_backbones():
                     #         kwargs['root'] = tempfile.mkdtemp(dir=kwargs['root'])
                     #         logger.info('Rank: {}, Setting {} as a target location of pretrained models'.format(rank, kwargs['root']))
                     model = model_getter(*args, **kwargs)
+                    if activation_cfg:
+                        model = replace_activation(model, activation_cfg)
+                    if norm_cfg:
+                        model = replace_norm(model, norm_cfg)
                     model.out_indices = out_indices
                     model.frozen_stages = frozen_stages
                     model.norm_eval = norm_eval

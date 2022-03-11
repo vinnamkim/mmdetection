@@ -67,8 +67,8 @@ def mask2result(det_bboxes,
             mask.to(dtype=torch.float32)[None, :, :, :], grid[None, :, :, :], align_corners=False)
 
         mask = img_masks[0, 0, :, :]
-        mask = (mask >= mask_thr_binary).to(dtype=torch.uint8)
+        mask = (mask >= mask_thr_binary).to(dtype=torch.bool)
 
-        cls_masks[label].append(to_numpy(mask))
+        cls_masks[label].append(to_numpy(mask, np.bool))
 
     return cls_masks

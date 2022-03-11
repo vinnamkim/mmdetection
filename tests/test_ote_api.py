@@ -533,3 +533,9 @@ class API(unittest.TestCase):
         self.end_to_end(osp.join('configs', 'ote',
                         'custom-counting-instance-seg', 'resnet50_maskrcnn'),
                         task_type=TaskType.INSTANCE_SEGMENTATION)
+
+    @e2e_pytest_api
+    def test_training_maskrcnn_efficientnetb2b(self):
+        self.end_to_end(osp.join('configs', 'ote',
+                        'custom-counting-instance-seg', 'efficientnetb2b_maskrcnn'),
+                        task_type=TaskType.INSTANCE_SEGMENTATION)
