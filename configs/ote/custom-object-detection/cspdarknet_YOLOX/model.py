@@ -61,7 +61,7 @@ runner = dict(type='EpochRunnerWithCancel', max_epochs=300)
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
 work_dir = 'output'
-load_from = '/media/cluster_fs/user/bbylicka/experiments/snapshots/yolox_tiny_8x8_300e_coco_20210806_234250-4ff3b67e.pth'
+load_from = 'https://storage.openvinotoolkit.org/repositories/openvino_training_extensions/models/object_detection/v2/yolox_tiny_8x8.pth'
 resume_from = None
 workflow = [('train', 1)]
 

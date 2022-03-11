@@ -4,7 +4,9 @@ name: YOLOX
 task_type: DETECTION
 task_family: VISION
 instantiation: "CLASS"
-summary: YOLOX with CSP-Darknet backbone.
+summary: Model with fastest inference speed, more than 2x compared to SSD, and comparable, slightly slower, training time.
+  Works best on datasets with large objects, can struggle with small objects.
+
 application:
   ~
 
@@ -49,5 +51,5 @@ training_targets:
   - CPU
 
 # Stats.
-# gigaflops: 20.6
-# size: 9.1
+gigaflops: 6.5
+size: 20.4
