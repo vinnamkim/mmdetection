@@ -13,14 +13,15 @@
 # and limitations under the License.
 
 import itertools
+import unittest
+
 import json
 import mmcv
 import os
 import os.path as osp
 import torch
-import unittest
-from ote_sdk.test_suite.e2e_test_system import e2e_pytest_api
 from mmcv.parallel import MMDataParallel
+from ote_sdk.test_suite.e2e_test_system import e2e_pytest_api
 from subprocess import run  # nosec
 
 from mmdet.apis import init_detector, single_gpu_test
@@ -30,7 +31,8 @@ from mmdet.parallel import MMDataCPU
 MODEL_CONFIGS = [
     'configs/ote/custom-object-detection/gen3_resnet50_VFNet/model.py',
     'configs/ote/custom-object-detection/gen3_mobilenetV2_ATSS/model.py',
-    'configs/ote/custom-object-detection/gen3_mobilenetV2_SSD/model.py'
+    'configs/ote/custom-object-detection/gen3_mobilenetV2_SSD/model.py',
+    'configs/ote/custom-object-detection/cspdarknet_YOLOX/model.py'
 ]
 
 DEVICES = ['cuda:0', 'cpu']
