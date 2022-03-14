@@ -1,4 +1,5 @@
 from .builder import build_positional_encoding, build_transformer
+from .csp_layer import CSPLayer
 from .gaussian_target import gaussian_radius, gen_gaussian_target
 from .positional_encoding import (LearnedPositionalEncoding,
                                   SinePositionalEncoding)
@@ -12,5 +13,5 @@ __all__ = [
     'FFN', 'TransformerEncoderLayer', 'TransformerEncoder',
     'TransformerDecoderLayer', 'TransformerDecoder', 'Transformer',
     'build_transformer', 'build_positional_encoding', 'SinePositionalEncoding',
-    'LearnedPositionalEncoding', 'DynamicConv', 'SimplifiedBasicBlock'
+    'LearnedPositionalEncoding', 'DynamicConv', 'SimplifiedBasicBlock', 'CSPLayer'
 ]

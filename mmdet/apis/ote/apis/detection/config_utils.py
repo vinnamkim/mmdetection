@@ -25,7 +25,8 @@ from ote_sdk.entities.datasets import DatasetEntity
 from ote_sdk.entities.label import LabelEntity, Domain
 from ote_sdk.usecases.reporting.time_monitor_callback import TimeMonitorCallback
 
-from mmdet.apis.ote.extension.datasets.data_utils import get_anchor_boxes, get_sizes_from_dataset_entity, format_list_to_str
+from mmdet.apis.ote.extension.datasets.data_utils import get_anchor_boxes, \
+    get_sizes_from_dataset_entity, format_list_to_str
 from mmdet.models.detectors import BaseDetector
 from mmdet.utils.logger import get_root_logger
 
@@ -229,7 +230,7 @@ def set_data_classes(config: Config, labels: List[LabelEntity]):
     # Save labels in data configs.
     for subset in ('train', 'val', 'test'):
         cfg = config.data[subset]
-        if cfg.type == 'RepeatDataset':
+        if cfg.type == 'RepeatDataset' or cfg.type == 'MultiImageMixDataset':
             cfg.dataset.labels = labels
         else:
             cfg.labels = labels
@@ -271,7 +272,7 @@ def patch_datasets(config: Config, domain):
     assert 'data' in config
     for subset in ('train', 'val', 'test'):
         cfg = config.data[subset]
-        if cfg.type == 'RepeatDataset':
+        if cfg.type == 'RepeatDataset' or cfg.type == 'MultiImageMixDataset':
             cfg = cfg.dataset
         cfg.type = 'OTEDataset'
         cfg.domain = domain

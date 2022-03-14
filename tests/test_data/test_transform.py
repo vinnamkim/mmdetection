@@ -1,8 +1,7 @@
 import copy
-import os.path as osp
-
 import mmcv
 import numpy as np
+import os.path as osp
 import pytest
 import torch
 from mmcv.utils import build_from_cfg
@@ -38,7 +37,7 @@ def test_resize():
     # test assertion if both scale and scale_factor are setted
     with pytest.raises(AssertionError):
         results = dict(
-            img_prefix=osp.join(osp.dirname(__file__), '../data'),
+            img_prefix=osp.join(osp.dirname(__file__), '../../../data'),
             img_info=dict(filename='color.jpg'))
         load = dict(type='LoadImageFromFile')
         load = build_from_cfg(load, PIPELINES)
@@ -54,7 +53,7 @@ def test_resize():
 
     results = dict()
     img = mmcv.imread(
-        osp.join(osp.dirname(__file__), '../data/color.jpg'), 'color')
+        osp.join(osp.dirname(__file__), '../../../data/color.jpg'), 'color')
     results['img'] = img
     results['img2'] = copy.deepcopy(img)
     results['img_shape'] = img.shape
@@ -108,7 +107,7 @@ def test_flip():
 
     results = dict()
     img = mmcv.imread(
-        osp.join(osp.dirname(__file__), '../data/color.jpg'), 'color')
+        osp.join(osp.dirname(__file__), '../../../data/color.jpg'), 'color')
     original_img = copy.deepcopy(img)
     results['img'] = img
     results['img2'] = copy.deepcopy(img)
@@ -136,7 +135,7 @@ def test_flip():
 
     results = dict()
     img = mmcv.imread(
-        osp.join(osp.dirname(__file__), '../data/color.jpg'), 'color')
+        osp.join(osp.dirname(__file__), '../../../data/color.jpg'), 'color')
     original_img = copy.deepcopy(img)
     results['img'] = img
     results['img_shape'] = img.shape
@@ -162,7 +161,7 @@ def test_flip():
 
     results = dict()
     img = mmcv.imread(
-        osp.join(osp.dirname(__file__), '../data/color.jpg'), 'color')
+        osp.join(osp.dirname(__file__), '../../../data/color.jpg'), 'color')
     original_img = copy.deepcopy(img)
     results['img'] = img
     results['img_shape'] = img.shape
@@ -188,7 +187,7 @@ def test_random_crop():
 
     results = dict()
     img = mmcv.imread(
-        osp.join(osp.dirname(__file__), '../data/color.jpg'), 'color')
+        osp.join(osp.dirname(__file__), '../../../data/color.jpg'), 'color')
     results['img'] = img
 
     results['img_shape'] = img.shape
@@ -315,7 +314,7 @@ def test_min_iou_random_crop():
 
     results = dict()
     img = mmcv.imread(
-        osp.join(osp.dirname(__file__), '../data/color.jpg'), 'color')
+        osp.join(osp.dirname(__file__), '../../../data/color.jpg'), 'color')
     results['img'] = img
 
     results['img_shape'] = img.shape
@@ -363,7 +362,7 @@ def test_pad():
     transform = build_from_cfg(transform, PIPELINES)
     results = dict()
     img = mmcv.imread(
-        osp.join(osp.dirname(__file__), '../data/color.jpg'), 'color')
+        osp.join(osp.dirname(__file__), '../../../data/color.jpg'), 'color')
     original_img = copy.deepcopy(img)
     results['img'] = img
     results['img2'] = copy.deepcopy(img)
@@ -392,6 +391,17 @@ def test_pad():
     assert img_shape[0] % 32 == 0
     assert img_shape[1] % 32 == 0
 
+    # test the size and size_divisor must be None when pad2square is True
+    with pytest.raises(AssertionError):
+        transform = dict(type='Pad', size_divisor=32, pad_to_square=True)
+        build_from_cfg(transform, PIPELINES)
+
+    transform = dict(type='Pad', pad_to_square=True)
+    transform = build_from_cfg(transform, PIPELINES)
+    results['img'] = img
+    results = transform(results)
+    assert results['img'].shape[0] == results['img'].shape[1]
+
 
 def test_normalize():
     img_norm_cfg = dict(
@@ -402,7 +412,7 @@ def test_normalize():
     transform = build_from_cfg(transform, PIPELINES)
     results = dict()
     img = mmcv.imread(
-        osp.join(osp.dirname(__file__), '../data/color.jpg'), 'color')
+        osp.join(osp.dirname(__file__), '../../../data/color.jpg'), 'color')
     original_img = copy.deepcopy(img)
     results['img'] = img
     results['img2'] = copy.deepcopy(img)
@@ -424,7 +434,7 @@ def test_normalize():
 
 def test_albu_transform():
     results = dict(
-        img_prefix=osp.join(osp.dirname(__file__), '../data'),
+        img_prefix=osp.join(osp.dirname(__file__), '../../../data'),
         img_info=dict(filename='color.jpg'))
 
     # Define simple pipeline
@@ -535,7 +545,7 @@ def test_random_center_crop_pad():
         build_from_cfg(transform, PIPELINES)
 
     results = dict(
-        img_prefix=osp.join(osp.dirname(__file__), '../data'),
+        img_prefix=osp.join(osp.dirname(__file__), '../../../data'),
         img_info=dict(filename='color.jpg'))
 
     load = dict(type='LoadImageFromFile', to_float32=True)
@@ -636,7 +646,7 @@ def test_multi_scale_flip_aug():
 
     results = dict()
     img = mmcv.imread(
-        osp.join(osp.dirname(__file__), '../data/color.jpg'), 'color')
+        osp.join(osp.dirname(__file__), '../../../data/color.jpg'), 'color')
     results['img'] = img
     results['img_shape'] = img.shape
     results['ori_shape'] = img.shape
@@ -667,7 +677,7 @@ def test_multi_scale_flip_aug():
 
     # test pipeline of coco_detection
     results = dict(
-        img_prefix=osp.join(osp.dirname(__file__), '../data'),
+        img_prefix=osp.join(osp.dirname(__file__), '../../../data'),
         img_info=dict(filename='color.jpg'))
     load_cfg, multi_scale_cfg = mmcv.Config.fromfile(
         'configs/_base_/datasets/coco_detection.py').test_pipeline
@@ -715,7 +725,7 @@ def test_cutout():
 
     results = dict()
     img = mmcv.imread(
-        osp.join(osp.dirname(__file__), '../data/color.jpg'), 'color')
+        osp.join(osp.dirname(__file__), '../../../data/color.jpg'), 'color')
 
     results['img'] = img
     results['img_shape'] = img.shape
@@ -750,3 +760,148 @@ def test_cutout():
     cutout_module = build_from_cfg(transform, PIPELINES)
     cutout_result = cutout_module(copy.deepcopy(results))
     assert cutout_result['img'].sum() > img.sum()
+
+
+def test_random_affine():
+    # test assertion for invalid translate_ratio
+    with pytest.raises(AssertionError):
+        transform = dict(type='RandomAffine', max_translate_ratio=1.5)
+        build_from_cfg(transform, PIPELINES)
+
+    # test assertion for invalid scaling_ratio_range
+    with pytest.raises(AssertionError):
+        transform = dict(type='RandomAffine', scaling_ratio_range=(1.5, 0.5))
+        build_from_cfg(transform, PIPELINES)
+
+    with pytest.raises(AssertionError):
+        transform = dict(type='RandomAffine', scaling_ratio_range=(0, 0.5))
+        build_from_cfg(transform, PIPELINES)
+
+    results = dict()
+    img = mmcv.imread(
+        osp.join(osp.dirname(__file__), '../../../data/color.jpg'), 'color')
+    results['img'] = img
+    results['bbox_fields'] = ['gt_bboxes', 'gt_bboxes_ignore']
+
+    def create_random_bboxes(num_bboxes, img_w, img_h):
+        bboxes_left_top = np.random.uniform(0, 0.5, size=(num_bboxes, 2))
+        bboxes_right_bottom = np.random.uniform(0.5, 1, size=(num_bboxes, 2))
+        bboxes = np.concatenate((bboxes_left_top, bboxes_right_bottom), 1)
+        bboxes = (bboxes * np.array([img_w, img_h, img_w, img_h])).astype(
+            np.int)
+        return bboxes
+
+    h, w, _ = img.shape
+    gt_bboxes = create_random_bboxes(8, w, h)
+    gt_bboxes_ignore = create_random_bboxes(2, w, h)
+    results['gt_labels'] = torch.ones(gt_bboxes.shape[0])
+    results['gt_bboxes'] = gt_bboxes
+    results['gt_bboxes_ignore'] = gt_bboxes_ignore
+    transform = dict(type='RandomAffine')
+    random_affine_module = build_from_cfg(transform, PIPELINES)
+    results = random_affine_module(results)
+
+    assert results['img'].shape[:2] == (h, w)
+    assert results['gt_labels'].shape[0] == results['gt_bboxes'].shape[0]
+
+    # test filter bbox
+    gt_bboxes = np.array([[0, 0, 1, 1], [0, 0, 3, 100]])
+    results['gt_labels'] = torch.ones(gt_bboxes.shape[0])
+    results['gt_bboxes'] = gt_bboxes
+    transform = dict(
+        type='RandomAffine',
+        max_rotate_degree=0.,
+        max_translate_ratio=0.,
+        scaling_ratio_range=(1., 1.),
+        max_shear_degree=0.,
+        border=(0, 0),
+        min_bbox_size=2,
+        max_aspect_ratio=20)
+    random_affine_module = build_from_cfg(transform, PIPELINES)
+
+    results = random_affine_module(results)
+
+    assert results['gt_bboxes'].shape[0] == 0
+    assert results['gt_labels'].shape[0] == 0
+
+
+def test_mosaic():
+    # test assertion for invalid img_scale
+    with pytest.raises(AssertionError):
+        transform = dict(type='Mosaic', img_scale=640)
+        build_from_cfg(transform, PIPELINES)
+
+    results = dict()
+    img = mmcv.imread(
+        osp.join(osp.dirname(__file__), '../../../data/color.jpg'), 'color')
+    results['img'] = img
+    # TODO: add img_fields test
+    results['bbox_fields'] = ['gt_bboxes', 'gt_bboxes_ignore']
+
+    def create_random_bboxes(num_bboxes, img_w, img_h):
+        bboxes_left_top = np.random.uniform(0, 0.5, size=(num_bboxes, 2))
+        bboxes_right_bottom = np.random.uniform(0.5, 1, size=(num_bboxes, 2))
+        bboxes = np.concatenate((bboxes_left_top, bboxes_right_bottom), 1)
+        bboxes = (bboxes * np.array([img_w, img_h, img_w, img_h])).astype(
+            np.int)
+        return bboxes
+
+    h, w, _ = img.shape
+    gt_bboxes = create_random_bboxes(8, w, h)
+    gt_bboxes_ignore = create_random_bboxes(2, w, h)
+    results['gt_labels'] = torch.ones(gt_bboxes.shape[0])
+    results['gt_bboxes'] = gt_bboxes
+    results['gt_bboxes_ignore'] = gt_bboxes_ignore
+    transform = dict(type='Mosaic', img_scale=(10, 12))
+    mosaic_module = build_from_cfg(transform, PIPELINES)
+
+    # test assertion for invalid mix_results
+    with pytest.raises(AssertionError):
+        mosaic_module(results)
+
+    results['mix_results'] = [copy.deepcopy(results)] * 3
+    results = mosaic_module(results)
+    assert results['img'].shape[:2] == (20, 24)
+
+
+def test_mixup():
+    # test assertion for invalid img_scale
+    with pytest.raises(AssertionError):
+        transform = dict(type='MixUp', img_scale=640)
+        build_from_cfg(transform, PIPELINES)
+
+    results = dict()
+    img = mmcv.imread(
+        osp.join(osp.dirname(__file__), '../../../data/color.jpg'), 'color')
+    results['img'] = img
+    # TODO: add img_fields test
+    results['bbox_fields'] = ['gt_bboxes', 'gt_bboxes_ignore']
+
+    def create_random_bboxes(num_bboxes, img_w, img_h):
+        bboxes_left_top = np.random.uniform(0, 0.5, size=(num_bboxes, 2))
+        bboxes_right_bottom = np.random.uniform(0.5, 1, size=(num_bboxes, 2))
+        bboxes = np.concatenate((bboxes_left_top, bboxes_right_bottom), 1)
+        bboxes = (bboxes * np.array([img_w, img_h, img_w, img_h])).astype(
+            np.int)
+        return bboxes
+
+    h, w, _ = img.shape
+    gt_bboxes = create_random_bboxes(8, w, h)
+    gt_bboxes_ignore = create_random_bboxes(2, w, h)
+    results['gt_labels'] = torch.ones(gt_bboxes.shape[0])
+    results['gt_bboxes'] = gt_bboxes
+    results['gt_bboxes_ignore'] = gt_bboxes_ignore
+    transform = dict(type='MixUp', img_scale=(10, 12))
+    mixup_module = build_from_cfg(transform, PIPELINES)
+
+    # test assertion for invalid mix_results
+    with pytest.raises(AssertionError):
+        mixup_module(results)
+
+    with pytest.raises(AssertionError):
+        results['mix_results'] = [copy.deepcopy(results)] * 2
+        mixup_module(results)
+
+    results['mix_results'] = [copy.deepcopy(results)]
+    results = mixup_module(results)
+    assert results['img'].shape[:2] == (288, 512)

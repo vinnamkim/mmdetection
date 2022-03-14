@@ -10,7 +10,7 @@ from .coco import CocoDataset
 from .coco_with_text import CocoWithTextDataset
 from .custom import CustomDataset
 from .dataset_wrappers import (ClassBalancedDataset, ConcatDataset,
-                               RepeatDataset)
+                               MultiImageMixDataset, RepeatDataset)
 from .deepfashion import DeepFashionDataset
 from .lvis import LVISDataset, LVISV1Dataset, LVISV05Dataset
 from .samplers import DistributedGroupSampler, DistributedSampler, GroupSampler
@@ -27,5 +27,5 @@ __all__ = [
     'DistributedSampler', 'build_dataloader', 'ConcatDataset', 'RepeatDataset',
     'ClassBalancedDataset', 'WIDERFaceDataset', 'DATASETS', 'PIPELINES',
     'build_dataset', 'replace_ImageToTensor', 'get_loading_pipeline',
-    'NumClassCheckHook', 'CocoWithTextDataset'
+    'NumClassCheckHook', 'CocoWithTextDataset', 'MultiImageMixDataset'
 ]

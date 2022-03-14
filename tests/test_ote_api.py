@@ -47,7 +47,8 @@ from ote_sdk.usecases.tasks.interfaces.export_interface import ExportType, IExpo
 from ote_sdk.usecases.tasks.interfaces.optimization_interface import OptimizationType
 from ote_sdk.utils.shape_factory import ShapeFactory
 
-from mmdet.apis.ote.apis.detection import (OpenVINODetectionTask, OTEDetectionConfig, OTEDetectionInferenceTask,
+from mmdet.apis.ote.apis.detection import (OpenVINODetectionTask, OTEDetectionConfig,
+                                           OTEDetectionInferenceTask,
                                            OTEDetectionNNCFTask, OTEDetectionTrainingTask)
 from mmdet.apis.ote.apis.detection.ote_utils import generate_label_schema
 from mmdet.integration.nncf.utils import is_nncf_enabled
@@ -73,6 +74,13 @@ class ModelTemplate(unittest.TestCase):
     @e2e_pytest_api
     def test_reading_gen3_vfnet(self):
         template = parse_model_template(osp.join('configs', 'ote', 'custom-object-detection', 'gen3_resnet50_VFNet', 'template_experimental.yaml'))
+        self.check_capabilities(template)
+
+    @e2e_pytest_api
+    def test_reading_yolox(self):
+        template = parse_model_template(
+            osp.join('configs', 'ote', 'custom-object-detection', 'cspdarknet_YOLOX',
+                     'template.yaml'))
         self.check_capabilities(template)
 
 
@@ -527,6 +535,11 @@ class API(unittest.TestCase):
     def test_training_gen3_vfnet(self):
         self.end_to_end(osp.join('configs', 'ote', 'custom-object-detection', 'gen3_resnet50_VFNet'),
             export_perf_delta_tolerance=0.01)
+
+    @e2e_pytest_api
+    def test_training_yolox(self):
+        self.end_to_end(
+            osp.join('configs', 'ote', 'custom-object-detection', 'cspdarknet_YOLOX'))
 
     @e2e_pytest_api
     def test_training_maskrcnn_resnet50(self):

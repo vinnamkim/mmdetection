@@ -5,12 +5,11 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 import copy
+import glob
+import numpy as np
 import platform
 import random
 from functools import partial
-import glob
-
-import numpy as np
 from mmcv.parallel import collate
 from mmcv.runner import get_dist_info
 from mmcv.utils import Registry, build_from_cfg
@@ -29,7 +28,6 @@ if platform.system() != 'Windows':
 DATASETS = Registry('dataset')
 PIPELINES = Registry('pipeline')
 
-from .dataset_wrappers import ConcatDataset, RepeatDataset
 from .coco import CocoDataset, ConcatenatedCocoDataset
 from .coco_with_text import CocoWithTextDataset, ConcatenatedCocoWithTextDataset
 
@@ -93,7 +91,7 @@ def _concat_dataset(cfg, default_args=None):
 
 def build_dataset(cfg, default_args=None):
     from .dataset_wrappers import (ConcatDataset, RepeatDataset,
-                                   ClassBalancedDataset)
+                                   ClassBalancedDataset, MultiImageMixDataset)
     if isinstance(cfg, (list, tuple)):
         dataset = ConcatDataset([build_dataset(c, default_args) for c in cfg])
     elif cfg['type'] == 'ConcatDataset':
@@ -106,6 +104,12 @@ def build_dataset(cfg, default_args=None):
     elif cfg['type'] == 'ClassBalancedDataset':
         dataset = ClassBalancedDataset(
             build_dataset(cfg['dataset'], default_args), cfg['oversample_thr'])
+    elif cfg['type'] == 'MultiImageMixDataset':
+        cp_cfg = copy.deepcopy(cfg)
+        cp_cfg['dataset'] = build_dataset(cp_cfg['dataset'])
+        cp_cfg.pop('type')
+        cp_cfg.pop('labels')
+        dataset = MultiImageMixDataset(**cp_cfg)
     elif isinstance(cfg.get('ann_file'), (list, tuple)):
         dataset = _concat_dataset(cfg, default_args)
     else:

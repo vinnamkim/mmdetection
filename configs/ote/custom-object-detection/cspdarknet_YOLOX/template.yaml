@@ -1,11 +1,12 @@
 # Description.
-model_template_id: Custom_Object_Detection_Gen3_VFNet
-name: VFNet
+model_template_id: Custom_Object_Detection_YOLOX
+name: YOLOX
 task_type: DETECTION
 task_family: VISION
 instantiation: "CLASS"
-summary: Model achieves the best accuracy but doubles the training time compared to ATSS and has the slowest
-  inference speed.
+summary: Model with fastest inference speed, more than 2x compared to SSD, and comparable, slightly slower, training time.
+  Works best on datasets with large objects, can struggle with small objects.
+
 application:
   ~
 
@@ -28,16 +29,16 @@ hyper_parameters:
   parameter_overrides:
     learning_parameters:
       batch_size:
-        default_value: 4
+        default_value: 16
       learning_rate:
-        default_value: 0.01
+        default_value: 0.0025
       learning_rate_warmup_iters:
         default_value: 500
       num_iters:
         default_value: 300
     nncf_optimization:
       enable_quantization:
-        default_value: true
+        default_value: false
       enable_pruning:
         default_value: false
       maximal_accuracy_degradation:
@@ -47,7 +48,8 @@ hyper_parameters:
 max_nodes: 1
 training_targets:
   - GPU
+  - CPU
 
 # Stats.
-gigaflops: 457.4
-size: 126.0
+gigaflops: 6.5
+size: 20.4
