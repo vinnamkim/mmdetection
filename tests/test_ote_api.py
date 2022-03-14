@@ -12,40 +12,40 @@
 # See the License for the specific language governing permissions
 # and limitations under the License.
 
-import time
-import unittest
-
 import glob
 import io
-import numpy as np
 import os.path as osp
 import random
-import torch
+import time
+import unittest
 import warnings
-from bson import ObjectId
 from concurrent.futures import ThreadPoolExecutor
+from subprocess import run  # nosec
+from typing import Optional
+
+import numpy as np
+import torch
+from bson import ObjectId
+from ote_sdk.test_suite.e2e_test_system import e2e_pytest_api
 from ote_sdk.configuration.helper import convert, create
 from ote_sdk.entities.annotation import AnnotationSceneEntity, AnnotationSceneKind
 from ote_sdk.entities.dataset_item import DatasetItemEntity
 from ote_sdk.entities.datasets import DatasetEntity
 from ote_sdk.entities.image import Image
 from ote_sdk.entities.inference_parameters import InferenceParameters
+from ote_sdk.entities.model_template import TaskType, task_type_to_label_domain
 from ote_sdk.entities.metrics import Performance
 from ote_sdk.entities.model import ModelEntity, ModelFormat, ModelOptimizationType
-from ote_sdk.entities.model_template import TaskType, task_type_to_label_domain
 from ote_sdk.entities.model_template import parse_model_template
 from ote_sdk.entities.optimization_parameters import OptimizationParameters
 from ote_sdk.entities.resultset import ResultSetEntity
 from ote_sdk.entities.subset import Subset
 from ote_sdk.entities.task_environment import TaskEnvironment
 from ote_sdk.entities.train_parameters import TrainParameters
-from ote_sdk.test_suite.e2e_test_system import e2e_pytest_api
 from ote_sdk.tests.test_helpers import generate_random_annotated_image
 from ote_sdk.usecases.tasks.interfaces.export_interface import ExportType, IExportTask
 from ote_sdk.usecases.tasks.interfaces.optimization_interface import OptimizationType
 from ote_sdk.utils.shape_factory import ShapeFactory
-from subprocess import run  # nosec
-from typing import Optional
 
 from mmdet.apis.ote.apis.detection import (OpenVINODetectionTask, OTEDetectionConfig,
                                            OTEDetectionInferenceTask,
