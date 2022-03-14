@@ -1,4 +1,4 @@
-# Copyright (C) 2021 Intel Corporation
+# Copyright (C) 2021-2022 Intel Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 import logging
 import math
 import os
-from math import inf
+from math import inf, isnan
 from collections import defaultdict
 
 from mmcv.runner.hooks import HOOKS, Hook, LoggerHook, LrUpdaterHook
@@ -491,3 +491,12 @@ class ReduceLROnPlateauLrUpdaterHook(LrUpdaterHook):
         self.last_iter = 0
         self.current_lr = None
         self.best_score = self.init_value_map[self.rule]
+
+
+@HOOKS.register_module()
+class StopLossNanTrainingHook(Hook):
+
+    def after_train_iter(self, runner):
+        if isnan(runner.outputs['loss'].item()):
+            logger.warning(f"Early Stopping since loss is NaN")
+            runner.should_stop = True

@@ -250,8 +250,13 @@ class OTEDetectionNNCFTask(OTEDetectionInferenceTask, IOptimizationTask):
         hyperparams = self._task_environment.get_hyper_parameters(OTEDetectionConfig)
         hyperparams_str = ids_to_strings(cfg_helper.convert(hyperparams, dict, enum_to_str=True))
         labels = {label.name: label.color.rgb_tuple for label in self._labels}
+        # WA for scheduler resetting in NNCF
+        compression_state = self._compression_ctrl.get_compression_state()
+        for algo_state in compression_state.get('ctrl_state', {}).values():
+            if not algo_state.get('scheduler_state'):
+                algo_state['scheduler_state'] = {'current_step': 0, 'current_epoch': 0}
         modelinfo = {
-            'compression_state': self._compression_ctrl.get_compression_state(),
+            'compression_state': compression_state,
             'meta': {
                 'config': self._config,
                 'nncf_enable_compression': True,

@@ -102,7 +102,7 @@ data = dict(
         times=2,
         dataset=dict(
             type=dataset_type,
-            classes=('face',),
+            labels=('face',),
             ann_file=data_root + '/train.json',
             min_size=10,
             img_prefix=data_root,
@@ -111,18 +111,19 @@ data = dict(
     ),
     val=dict(
         type=dataset_type,
-        classes=('face',),
+        labels=('face',),
         ann_file=data_root + '/val.json',
         img_prefix=data_root,
         test_mode=True,
         pipeline=test_pipeline),
     test=dict(
         type=dataset_type,
-        classes=('face',),
+        labels=('face',),
         ann_file=data_root + '/val.json',
         img_prefix=data_root,
         test_mode=True,
         pipeline=test_pipeline))
+evaluation = dict(interval=1, metric='mAP', save_best='mAP')
 # optimizer
 optimizer = dict(type='SGD', lr=0.05, momentum=0.9, weight_decay=0.0005)
 optimizer_config = dict()
@@ -143,10 +144,10 @@ log_config = dict(
     ])
 # yapf:enable
 # runtime settings
-total_epochs = 70
+runner = dict(type='EpochBasedRunner', max_epochs=70)
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
-work_dir = 'outputs/face-detection-0205'
-load_from = None
+work_dir = 'output'
+load_from = 'https://storage.openvinotoolkit.org/repositories/openvino_training_extensions/models/object_detection/v2/face-detection-0205-retrained.pth'
 resume_from = None
 workflow = [('train', 1)]
