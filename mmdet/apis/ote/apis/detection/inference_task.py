@@ -200,6 +200,7 @@ class OTEDetectionInferenceTask(IInferenceTask, IExportTask, IEvaluationTask, IU
                 for label_idx, (boxes, masks) in enumerate(zip(*all_results)):
                     for mask, probability in zip(masks, boxes[:, 4]):
                         mask = mask.astype(np.uint8)
+                        probability = float(probability)
                         contours, hierarchies = cv2.findContours(mask, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
                         if hierarchies is None:
                             continue
