@@ -116,7 +116,8 @@ def diou_loss(pred, target, eps=1e-7):
     r"""`Implementation of Distance-IoU Loss: Faster and Better
     Learning for Bounding Box Regression, https://arxiv.org/abs/1911.08287`_.
 
-    Code is modified from https://github.com/Zzh-tju/DIoU.
+    The code from the following github repo was used as an example:
+    https://github.com/Zzh-tju/DIoU.
 
     Args:
         pred (Tensor): Predicted bboxes of format (x1, y1, x2, y2),
@@ -171,7 +172,8 @@ def ciou_loss(pred, target, eps=1e-7):
     Model Learning and Inference for Object Detection and Instance
     Segmentation <https://arxiv.org/abs/2005.03572>`_.
 
-    Code is modified from https://github.com/Zzh-tju/CIoU.
+    The code from the following github repo was used as an example:
+    https://github.com/Zzh-tju/CIoU.
 
     Args:
         pred (Tensor): Predicted bboxes of format (x1, y1, x2, y2),
