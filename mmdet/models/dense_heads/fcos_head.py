@@ -27,8 +27,10 @@ class FCOSHead(AnchorFreeHead):
     low-quality predictions.
     Here norm_on_bbox, centerness_on_reg, dcn_on_last_conv are training
     tricks used in official repo, which will bring remarkable mAP gains
-    of up to 4.9. Please see https://github.com/tianzhi0549/FCOS for
-    more detail.
+    of up to 4.9.
+    The code from the following github repo was used as an example:
+    https://github.com/tianzhi0549/FCOS
+    -- see it for more detail.
 
     Args:
         num_classes (int): Number of categories excluding the background

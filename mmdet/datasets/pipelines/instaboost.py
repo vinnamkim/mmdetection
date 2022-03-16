@@ -9,7 +9,9 @@ class InstaBoost(object):
     Segmentation Via Probability Map Guided Copy-Pasting
     <https://arxiv.org/abs/1908.07801>`_.
 
-    Refer to https://github.com/GothicAi/Instaboost for implementation details.
+    The code from the following github repo was used as an example:
+    https://github.com/GothicAi/Instaboost
+    See it for implementation details.
     """
 
     def __init__(self,

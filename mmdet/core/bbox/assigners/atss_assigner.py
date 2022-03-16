@@ -35,6 +35,7 @@ class ATSSAssigner(BaseAssigner):
         self.iou_calculator = build_iou_calculator(iou_calculator)
         self.ignore_iof_thr = ignore_iof_thr
 
+    # The code from the following github repo was used as an example:
     # https://github.com/sfzhang15/ATSS/blob/master/atss_core/modeling/rpn/atss/loss.py
 
     def assign(self,

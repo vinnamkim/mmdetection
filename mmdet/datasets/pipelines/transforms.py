@@ -1179,7 +1179,7 @@ class MinIoURandomCrop(object):
 class Corrupt(object):
     """Corruption augmentation.
 
-    Corruption transforms implemented based on
+    The code from the following github repo was used as an example:
     `imagecorruptions <https://github.com/bethgelab/imagecorruptions>`_.
 
     Args:

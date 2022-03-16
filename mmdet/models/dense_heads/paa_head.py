@@ -46,7 +46,8 @@ class PAAHead(ATSSHead):
     """Head of PAAAssignment: Probabilistic Anchor Assignment with IoU
     Prediction for Object Detection.
 
-    Code is modified from the `official github repo
+    The code from the following github repo was used as an example:
+    `official github repo
     <https://github.com/kkhoot/PAA/blob/master/paa_core
     /modeling/rpn/paa/loss.py>`_.
 
