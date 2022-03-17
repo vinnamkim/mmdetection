@@ -1,5 +1,6 @@
 import pytest
 import torch
+from torch.nn.modules import GroupNorm
 from torch.nn.modules.batchnorm import _BatchNorm
 
 from mmdet.models.backbones.csp_darknet import CSPDarknet
@@ -136,3 +137,19 @@ def test_csp_darknet_backbone():
     assert feat[1].shape == torch.Size((1, 56, 56, 56))
     assert feat[2].shape == torch.Size((1, 224, 28, 28))
     assert feat[3].shape == torch.Size((1, 512, 14, 14))
+
+
+def is_norm(modules):
+    """Check if is one of the norms."""
+    if isinstance(modules, (GroupNorm, _BatchNorm)):
+        return True
+    return False
+
+
+def check_norm_state(modules, train_state):
+    """Check if norm layer is in correct train state."""
+    for mod in modules:
+        if isinstance(mod, _BatchNorm):
+            if mod.training != train_state:
+                return False
+    return True
