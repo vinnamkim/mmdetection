@@ -122,16 +122,6 @@ echo "export MMDETECTION_DIR=${MMDETECTION_DIR}" >> ${venv_dir}/bin/activate
 echo "Build NNCF extensions ..."
 python -c "import nncf"
 
-if [[ ! -z $OTE_SDK_PATH ]]; then
-  pip install -e $OTE_SDK_PATH || exit 1
-elif [[ ! -z $SC_SDK_REPO ]]; then
-  pip install -e $SC_SDK_REPO/src/ote_sdk || exit 1
-else
-  echo "OTE_SDK_PATH or SC_SDK_REPO should be specified"
-  exit 1
-fi
-
-
 deactivate
 
 echo
