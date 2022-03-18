@@ -112,6 +112,7 @@ pip install --no-cache-dir mmcv-full==${MMCV_VERSION} || exit 1
 # Install mmpycocotools from source to make sure it is compatible with installed numpy version.
 pip install --no-cache-dir --no-binary=mmpycocotools mmpycocotools || exit 1
 cat requirements.txt | xargs -n 1 -L 1 pip install --no-cache || exit 1
+cat openvino_requirements.txt | xargs -n 1 -L 1 pip install --no-cache || exit 1
 
 pip install -e . || exit 1
 MMDETECTION_DIR=`realpath .`
@@ -120,16 +121,6 @@ echo "export MMDETECTION_DIR=${MMDETECTION_DIR}" >> ${venv_dir}/bin/activate
 # Build NNCF extensions
 echo "Build NNCF extensions ..."
 python -c "import nncf"
-
-if [[ ! -z $OTE_SDK_PATH ]]; then
-  pip install -e $OTE_SDK_PATH || exit 1
-elif [[ ! -z $SC_SDK_REPO ]]; then
-  pip install -e $SC_SDK_REPO/src/ote_sdk || exit 1
-else
-  echo "OTE_SDK_PATH or SC_SDK_REPO should be specified"
-  exit 1
-fi
-
 
 deactivate
 
