@@ -64,7 +64,7 @@ def multiclass_nms(multi_bboxes,
 def multiclass_nms_core(multi_bboxes, multi_scores, score_thr, nms_cfg, max_num=-1, return_inds=False):
     num_classes = multi_scores.size(1)
     if multi_bboxes.shape[1] > 4:
-        bboxes = multi_bboxes.view(multi_scores.size(0), -1, 4)
+        bboxes = multi_bboxes.view(multi_scores.size(0), multi_bboxes.shape[1] // 4, 4)
     else:
         bboxes = multi_bboxes[:, None].expand(multi_scores.size(0), num_classes, 4)
     scores = multi_scores

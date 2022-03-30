@@ -6,7 +6,10 @@
 #
 import sys
 
+import torch
+
 from mmdet.core import merge_aug_proposals
+from mmdet.core.utils.misc import dummy_pad
 from mmdet.integration.nncf.utils import no_nncf_trace
 
 
@@ -43,6 +46,8 @@ class RPNTestMixin(object):
         rpn_outs = self(x)
         with no_nncf_trace():
             proposal_list = self.get_bboxes(*rpn_outs, img_metas)
+            if torch.onnx.is_in_onnx_export() and proposal_list[0].size(0) == 0:
+                proposal_list = [dummy_pad(proposals, (0, 0, 0, 1)) for proposals in proposal_list]
         return proposal_list
 
     def aug_test_rpn(self, feats, img_metas):
