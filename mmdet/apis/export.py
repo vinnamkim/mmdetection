@@ -17,6 +17,7 @@ from packaging import version
 from subprocess import DEVNULL, CalledProcessError, run  # nosec
 
 import mmcv
+import numpy as np
 import onnx
 import torch
 from onnxoptimizer import optimize
@@ -199,7 +200,25 @@ def export_to_openvino(cfg, onnx_model_path, output_dir_path, input_shape=None,
         run(command_line, check=True)
 
 
-def optimize_onnx_graph(onnx_model_path):
+def optimize_onnx_graph(onnx_model_path, precision='FP32'):
+    def convert_np_to_float16(np_array, min_positive_val=1e-7, max_finite_val=1e4):
+        def between(a, b, c):
+            return np.logical_and(a < b, b < c)
+        np_array = np.where(between(0, np_array, min_positive_val), min_positive_val, np_array)
+        np_array = np.where(between(-min_positive_val, np_array, 0), -min_positive_val, np_array)
+        np_array = np.where(between(max_finite_val, np_array, float('inf')), max_finite_val, np_array)
+        np_array = np.where(between(float('-inf'), np_array, -max_finite_val), -max_finite_val, np_array)
+        return np.float16(np_array)
+
+    def convert_tensor_float32_to_float16(tensor, min_positive_val=1e-7, max_finite_val=1e4):
+        if tensor.data_type == onnx.onnx_pb.TensorProto.FLOAT:
+            tensor.data_type = onnx.onnx_pb.TensorProto.FLOAT16
+            if tensor.raw_data:
+                float32_list = np.fromstring(tensor.raw_data, dtype='float32')
+                float16_list = convert_np_to_float16(float32_list, min_positive_val, max_finite_val)
+                tensor.raw_data = float16_list.tostring()
+        return tensor
+
     onnx_model = onnx.load(onnx_model_path)
 
     onnx_model = optimize(onnx_model, ['extract_constant_to_initializer',
@@ -214,6 +233,13 @@ def optimize_onnx_graph(onnx_model_path):
         if initializer.name in name_to_input:
             inputs.remove(name_to_input[initializer.name])
 
+    if precision == 'FP16':
+        for initializer in onnx_model.graph.initializer:
+            initializer = convert_tensor_float32_to_float16(initializer)
+        for node in onnx_model.graph.node:
+            if node.op_type == 'Cast':
+                if node.attribute[0].i == onnx.onnx_pb.TensorProto.FLOAT:
+                    node.attribute[0].i = onnx.onnx_pb.TensorProto.FLOAT16
     onnx.save(onnx_model, onnx_model_path)
 
 
@@ -242,7 +268,7 @@ def export_model(model, config, output_dir, target='openvino', onnx_opset=11,
         # add_node_names(onnx_model_path)
         print(f'ONNX model has been saved to "{onnx_model_path}"')
 
-    optimize_onnx_graph(onnx_model_path)
+    optimize_onnx_graph(onnx_model_path, precision)
 
     with_text = False
     if target == 'openvino' and not alt_ssd_export:
