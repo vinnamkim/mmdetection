@@ -2,6 +2,7 @@ from abc import ABCMeta, abstractmethod
 
 import torch
 
+from mmdet.integration.nncf.utils import no_nncf_trace
 from .sampling_result import SamplingResult
 
 
@@ -80,7 +81,6 @@ class BaseSampler(metaclass=ABCMeta):
             gt_flags = torch.cat([gt_ones, gt_flags])
 
         # NNCF can not wrap this part with torch older 1.11.0
-        from mmdet.integration.nncf.utils import no_nncf_trace
         with no_nncf_trace():
             num_expected_pos = int(self.num * self.pos_fraction)
             pos_inds = self.pos_sampler._sample_pos(
