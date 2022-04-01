@@ -232,7 +232,9 @@ def optimize_onnx_graph(onnx_model_path, precision='FP32'):
     for initializer in onnx_model.graph.initializer:
         if initializer.name in name_to_input:
             inputs.remove(name_to_input[initializer.name])
-
+    
+    # TODO: Temp fix when data with a different data type gets into ONNX graph.
+    #   https://github.com/openvinotoolkit/mmdetection/pull/345
     if precision == 'FP16':
         for initializer in onnx_model.graph.initializer:
             initializer = convert_tensor_float32_to_float16(initializer)
