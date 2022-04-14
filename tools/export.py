@@ -79,12 +79,13 @@ def main(args):
         if is_alt_ssd_export:
             patch_nncf_model_for_alt_ssd_export(model)
     # END nncf part
+    precision = 'FP16' if cfg.get('fp16', None) else 'FP32'
 
     if args.target == 'onnx':
-        export_model(model, cfg, args.output_dir, target=args.target, onnx_opset=args.opset)
+        export_model(model, cfg, args.output_dir, target=args.target, onnx_opset=args.opset, precision=precision)
     else:
         export_model(model, cfg, args.output_dir, target=args.target, onnx_opset=args.opset,
-                    input_shape=args.input_shape, input_format=args.input_format, precision=args.precision,
+                    input_shape=args.input_shape, input_format=args.input_format, precision=precision,
                     alt_ssd_export=is_alt_ssd_export)
 
 

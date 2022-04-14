@@ -20,6 +20,7 @@ import mmcv
 import numpy as np
 import onnx
 import torch
+from mmcv.runner import wrap_fp16_model
 from onnxoptimizer import optimize
 from torch.onnx.symbolic_helper import _onnx_stable_opsets as available_opsets
 
@@ -259,6 +260,8 @@ def export_model(model, config, output_dir, target='openvino', onnx_opset=11,
     device = next(model.parameters()).device
     cfg = config
     fake_data = get_fake_input(cfg, device=device)
+    if precision == 'FP16':
+        wrap_fp16_model(model)
 
     mmcv.mkdir_or_exist(osp.abspath(output_dir))
     onnx_model_path = osp.join(output_dir, cfg.get('model_name', 'model') + '.onnx')
