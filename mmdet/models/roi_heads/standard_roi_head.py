@@ -107,22 +107,23 @@ class StandardRoIHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
             dict[str, Tensor]: a dictionary of loss components
         """
         # assign gts and sample proposals
-        if self.with_bbox or self.with_mask:
-            num_imgs = len(img_metas)
-            if gt_bboxes_ignore is None:
-                gt_bboxes_ignore = [None for _ in range(num_imgs)]
-            sampling_results = []
-            for i in range(num_imgs):
-                assign_result = self.bbox_assigner.assign(
-                    proposal_list[i], gt_bboxes[i], gt_bboxes_ignore[i],
-                    gt_labels[i])
-                sampling_result = self.bbox_sampler.sample(
-                    assign_result,
-                    proposal_list[i],
-                    gt_bboxes[i],
-                    gt_labels[i],
-                    feats=[lvl_feat[i][None] for lvl_feat in x])
-                sampling_results.append(sampling_result)
+        with no_nncf_trace():
+            if self.with_bbox or self.with_mask:
+                num_imgs = len(img_metas)
+                if gt_bboxes_ignore is None:
+                    gt_bboxes_ignore = [None for _ in range(num_imgs)]
+                sampling_results = []
+                for i in range(num_imgs):
+                    assign_result = self.bbox_assigner.assign(
+                        proposal_list[i], gt_bboxes[i], gt_bboxes_ignore[i],
+                        gt_labels[i])
+                    sampling_result = self.bbox_sampler.sample(
+                        assign_result,
+                        proposal_list[i],
+                        gt_bboxes[i],
+                        gt_labels[i],
+                        feats=[lvl_feat[i][None] for lvl_feat in x])
+                    sampling_results.append(sampling_result)
 
         losses = dict()
         # bbox head forward and loss
