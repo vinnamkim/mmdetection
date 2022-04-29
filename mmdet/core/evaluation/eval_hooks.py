@@ -84,7 +84,6 @@ class EvalHook(Hook):
                  test_fn=None,
                  greater_keys=None,
                  less_keys=None,
-                 best_ckpt_path=None,
                  **eval_kwargs):
         if not isinstance(dataloader, DataLoader):
             raise TypeError(f'dataloader must be a pytorch DataLoader, '
@@ -137,7 +136,7 @@ class EvalHook(Hook):
             self.less_keys = less_keys
 
         if self.save_best is not None:
-            self.best_ckpt_path = best_ckpt_path
+            self.best_ckpt_path = None
             self._init_rule(rule, self.save_best)
 
     def _init_rule(self, rule, key_indicator):
