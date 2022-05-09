@@ -9,7 +9,7 @@ from mmcv.runner import force_fp32
 
 from mmdet.models.builder import ROI_EXTRACTORS
 from mmdet.utils.deployment.symbolic import py_symbolic
-from mmdet.integration.nncf.utils import is_in_nncf_tracing
+from mmdet.integration.nncf.utils import is_in_nncf_tracing, no_nncf_trace
 from .base_roi_extractor import BaseRoIExtractor
 
 
@@ -59,10 +59,11 @@ class SingleRoIExtractor(BaseRoIExtractor):
         Returns:
             Tensor: Level index (0-based) of each RoI, shape (k, )
         """
-        scale = torch.sqrt(
-            (rois[:, 3] - rois[:, 1]) * (rois[:, 4] - rois[:, 2]))
-        target_lvls = torch.floor(torch.log2(scale / self.finest_scale + 1e-6))
-        target_lvls = target_lvls.clamp(min=0, max=num_levels - 1).long()
+        with no_nncf_trace():
+            scale = torch.sqrt(
+                (rois[:, 3] - rois[:, 1]) * (rois[:, 4] - rois[:, 2]))
+            target_lvls = torch.floor(torch.log2(scale / self.finest_scale + 1e-6))
+            target_lvls = target_lvls.clamp(min=0, max=num_levels - 1).long()
         return target_lvls
 
     @py_symbolic(op_name='roi_feature_extractor', adapter=adapter)
