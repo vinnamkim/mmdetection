@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 import shutil
+from os import path as osp
 import warnings
 import numpy as np
 import random
@@ -208,7 +209,6 @@ def train_detector(model,
     if validate:
         eval_cfg = cfg.get('evaluation', {})
         eval_cfg['by_epoch'] = cfg.runner['type'] != 'IterBasedRunner'
-        eval_cfg['best_ckpt_path'] = cfg.get('resume_from')
         eval_hook = DistEvalHook if distributed else EvalHook
         if nncf_enable_compression:
             # disable saving best snapshot, because it works incorrectly for NNCF,
@@ -240,6 +240,9 @@ def train_detector(model,
 
     if cfg.resume_from:
         runner.resume(cfg.resume_from, map_location=map_location)
+        if "best_ckpt" in runner.meta['hook_msgs']:
+            runner.meta['hook_msgs']['best_ckpt'] = osp.join(cfg.work_dir,
+                osp.basename(cfg.resume_from))
         shutil.copy(cfg.resume_from, cfg.work_dir)
 
     if nncf_is_acc_aware_training_set:
