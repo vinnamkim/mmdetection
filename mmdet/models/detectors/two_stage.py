@@ -209,7 +209,7 @@ class TwoStageDetector(BaseDetector):
         out = self.roi_head.simple_test(x, proposal_list, img_metas, rescale=rescale, postprocess=postprocess)
         if torch.onnx.is_in_onnx_export() or is_in_nncf_tracing():
             feature_vector = get_feature_vector(x)
-            saliency_map = get_saliency_map(x[0])
+            saliency_map = get_saliency_map(x[-1])
             feature = feature_vector, saliency_map
             return out, feature
         return out
