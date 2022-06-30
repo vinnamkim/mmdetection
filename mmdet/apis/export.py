@@ -97,6 +97,7 @@ def export_to_onnx(model,
                 if getattr(model.roi_head, 'with_text', False):
                     output_names.append('text_features')
                     dynamic_axes['text_features'] = {0: 'objects_num'}
+        output_names.extend(['feature_vector', 'saliency_map'])
 
         with torch.no_grad():
             model.export(
