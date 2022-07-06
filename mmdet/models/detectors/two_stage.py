@@ -9,7 +9,7 @@ import torch.nn as nn
 from ..builder import DETECTORS, build_backbone, build_head, build_neck
 from .base import BaseDetector
 
-from mmdet.integration.nncf.utils import is_in_nncf_tracing
+from mmdet.integration.nncf.utils import is_in_nncf_tracing, no_nncf_trace
 from mmdet.utils.deployment.export_helpers import get_feature_vector, get_saliency_map
 
 @DETECTORS.register_module()
@@ -207,11 +207,12 @@ class TwoStageDetector(BaseDetector):
             proposal_list = proposals
 
         out = self.roi_head.simple_test(x, proposal_list, img_metas, rescale=rescale, postprocess=postprocess)
-        if torch.onnx.is_in_onnx_export() or is_in_nncf_tracing():
-            feature_vector = get_feature_vector(x)
-            saliency_map = get_saliency_map(x[-1])
-            feature = feature_vector, saliency_map
-            return out, feature
+        with no_nncf_trace():
+            if torch.onnx.is_in_onnx_export():
+                feature_vector = get_feature_vector(x)
+                saliency_map = get_saliency_map(x[-1])
+                feature = feature_vector, saliency_map
+                return out, feature
         return out
 
     def aug_test(self, imgs, img_metas, rescale=False):

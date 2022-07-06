@@ -110,11 +110,11 @@ class SingleStageDetector(BaseDetector):
         with no_nncf_trace():
             bbox_results = \
                 self.bbox_head.get_bboxes(*outs, img_metas, self.test_cfg, False)
-        if torch.onnx.is_in_onnx_export() or is_in_nncf_tracing():
-            feature_vector = get_feature_vector(x)
-            saliency_map = get_saliency_map(x[-1])
-            feature = feature_vector, saliency_map
-            return bbox_results[0], feature
+            if torch.onnx.is_in_onnx_export():
+                feature_vector = get_feature_vector(x)
+                saliency_map = get_saliency_map(x[-1])
+                feature = feature_vector, saliency_map
+                return bbox_results[0], feature
 
         if postprocess:
             bbox_results = [
