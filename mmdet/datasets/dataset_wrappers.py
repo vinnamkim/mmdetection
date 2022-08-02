@@ -438,7 +438,8 @@ class ImageTilingDataset:
                  overlap_ratio=0.2,
                  iou_threshold=0.45,
                  max_per_img=200,
-                 filter_empty_gt=True):
+                 filter_empty_gt=True,
+                 test_mode=False):
 
         self.CLASSES = dataset.CLASSES
         self.tmp_dir = tempfile.TemporaryDirectory()
@@ -453,6 +454,7 @@ class ImageTilingDataset:
             filter_empty_gt=False if dataset.test_mode else filter_empty_gt)
         self.flag = np.zeros(len(self), dtype=np.uint8)
         self.pipeline = Compose(pipeline)
+        self.test_mode = test_mode
 
     def __len__(self) -> int:
         return len(self.tile_dataset)
