@@ -45,36 +45,34 @@ class Tile:
 
     Args:
         dataset (CustomDataset): the dataset to be tiled.
-        tile_size (int): the length of side of each tile
+        tile_size (int): the length of side of each tile. Defaults to 400
         overlap (float, optional): ratio of each tile to overlap with each of
-            the tiles in its 4-neighborhood. Defaults to 0.3.
+            the tiles in its 4-neighborhood. Defaults to 0.2.
         min_area_ratio (float, optional): the minimum overlap area ratio
             between a tiled image and its annotations. Ground-truth box is
             discarded if the overlap area is less than this value.
-            Defaults to 0.2.
+            Defaults to 0.9.
         iou_threshold (float, optional): IoU threshold to be used to suppress
             boxes in tiles' overlap areas. Defaults to 0.45.
         max_per_img (int, optional): if there are more than max_per_img bboxes
-            after NMS, only top max_per_img will be kept. Defaults to 200.
+            after NMS, only top max_per_img will be kept. Defaults to 1500.
         filter_empty_gt (bool, optional): If set true, images without bounding
             boxes of the dataset's classes will be filtered out. This option
             only works when `test_mode=False`, i.e., we never filter images
             during tests. Defaults to True.
-        nproc (int, optional): 
+        nproc (int, optional): Processes used for processing masks. Default: 4.
     """
 
     def __init__(self,
                  dataset,
                  tmp_dir: tempfile.TemporaryDirectory,
-                 tile_size: int,
-                 overlap: float = 0.3,
-                 min_area_ratio: float = 0.2,
+                 tile_size: int = 400,
+                 overlap: float = 0.2,
+                 min_area_ratio: float = 0.9,
                  iou_threshold: float = 0.45,
-                 max_per_img: int = 200,
+                 max_per_img: int = 1500,
                  filter_empty_gt: bool = True,
                  nproc: int = 4):
-        # TODO[EUGENE]: AUTO CONFIG TILE PARAMETERS
-        self.nproc = nproc
         self.min_area_ratio = min_area_ratio
         self.filter_empty_gt = filter_empty_gt
         self.iou_threshold = iou_threshold
@@ -86,6 +84,7 @@ class Tile:
         self.num_classes = len(dataset.CLASSES)
         self.CLASSES = dataset.CLASSES
         self.tmp_folder = tmp_dir.name
+        self.nproc = nproc
 
         self.__dataset = dataset
         self.__tiles = self.__gen_tile_ann()
@@ -384,7 +383,6 @@ class Tile:
         """
         assert len(results) == len(self.__tiles)
 
-        # BUG: in Segmentation tasks
         if isinstance(results[0], tuple):
             num_classes = len(results[0][0])
             dtype = results[0][0][0].dtype
@@ -392,7 +390,7 @@ class Tile:
             num_classes = len(results[0])
             dtype = results[0][0].dtype
         else:
-            raise RuntimeError()
+            raise RuntimeError("Unknown data type")
 
         merged_bbox_results = [np.empty((0, 5), dtype=dtype) for _ in range(self.num_images)]
         merged_mask_results = [[] for _ in range(self.num_images)]
