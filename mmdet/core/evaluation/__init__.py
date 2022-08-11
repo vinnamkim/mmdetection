@@ -14,6 +14,8 @@ from .recall import (eval_recalls, plot_iou_recall, plot_num_recall,
                      print_recall_summary)
 from .text_evaluation import text_eval
 from .mean_ap_seg import eval_segm
+from .mae import MAE, CustomMAE
+
 
 __all__ = [
     'voc_classes', 'imagenet_det_classes', 'imagenet_vid_classes',
@@ -21,5 +23,5 @@ __all__ = [
     'DistEvalHook', 'DistEvalPlusBeforeRunHook', 'EvalHook', 'EvalPlusBeforeRunHook',
     'average_precision', 'eval_map', 'print_map_summary', 'eval_recalls',
     'print_recall_summary', 'plot_num_recall', 'plot_iou_recall', 'text_eval',
-    'eval_segm'
+    'eval_segm', 'MAE', 'CustomMAE'
 ]

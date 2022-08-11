@@ -86,28 +86,28 @@ class Tile:
         self.tmp_folder = tmp_dir.name
         self.nproc = nproc
 
-        self.__dataset = dataset
-        self.__tiles = self.__gen_tile_ann()
-        self.__cache_tiles()
+        self.dataset = dataset
+        self.tiles = self.gen_tile_ann()
+        self.cache_tiles()
 
     @timeit
-    def __cache_tiles(self):
-        pbar = tqdm(total=len(self.__tiles))
+    def cache_tiles(self):
+        pbar = tqdm(total=len(self.tiles))
         pre_img_idx = None
-        for i, tile in enumerate(self.__tiles):
+        for i, tile in enumerate(self.tiles):
             tile['tile_path'] = osp.join(
                 self.tmp_folder, "_".join([str(i), tile['uuid'], tile['ori_filename'], '.jpg']))
             x_1, y_1, x_2, y_2 = tile['tile_box']
             dataset_idx = tile['dataset_idx']
             if dataset_idx != pre_img_idx:
-                ori_img = self.__dataset[dataset_idx]['img']
+                ori_img = self.dataset[dataset_idx]['img']
                 pre_img_idx = dataset_idx
 
             mmcv.imwrite(ori_img[y_1:y_2, x_1:x_2, :], tile['tile_path'])
             pbar.update(1)
 
     @timeit
-    def __gen_tile_ann(self) -> List[Dict]:
+    def gen_tile_ann(self) -> List[Dict]:
         """Generate tile information and tile annotation from dataset.
 
         Returns:
@@ -115,13 +115,13 @@ class Tile:
                         coordinates relative to the original image.
         """
         tiles = []
-        pbar = tqdm(total=len(self.__dataset))
-        for idx, result in enumerate(self.__dataset):
-            tiles.extend(self.__gen_tiles_single_img(result, dataset_idx=idx))
+        pbar = tqdm(total=len(self.dataset))
+        for idx, result in enumerate(self.dataset):
+            tiles.extend(self.gen_tiles_single_img(result, dataset_idx=idx))
             pbar.update(1)
         return tiles
 
-    def __gen_tiles_single_img(self, result: Dict, dataset_idx: int) -> List[Dict]:
+    def gen_tiles_single_img(self, result: Dict, dataset_idx: int) -> List[Dict]:
         """Generate tile annotation for a single image.
 
         Args:
@@ -139,9 +139,9 @@ class Tile:
         gt_labels = result.pop('gt_labels', np.array([], dtype=np.int64))
         img_shape = result.pop('img_shape')
         height, width = img_shape[:2]
-        y_segments = self.__slice_2d(height)
-        x_segments = self.__slice_2d(width)
-        _tile = self.__prepare_result(result)
+        y_segments = self.slice_2d(height)
+        x_segments = self.slice_2d(width)
+        _tile = self.prepare_result(result)
 
         for x_seg in x_segments:
             for y_seg in y_segments:
@@ -155,14 +155,14 @@ class Tile:
                 tile['dataset_idx'] = dataset_idx
                 tile['gt_bboxes_ignore'] = gt_bboxes_ignore
                 tile['uuid'] = str(uuid.uuid4())
-                self.__tile_ann_assignment(tile, np.array([[x_1, y_1, x_2, y_2]]), gt_bboxes, gt_masks, gt_labels)
+                self.tile_ann_assignment(tile, np.array([[x_1, y_1, x_2, y_2]]), gt_bboxes, gt_masks, gt_labels)
                 # filter empty ground truth
                 if self.filter_empty_gt and len(tile['gt_labels']) == 0:
                     continue
                 tile_list.append(tile)
         return tile_list
 
-    def __prepare_result(self, result: Dict) -> Dict:
+    def prepare_result(self, result: Dict) -> Dict:
         """Prepare results dict for pipeline.
 
         Args:
@@ -181,8 +181,8 @@ class Tile:
         )
         return result_template
 
-    def __tile_ann_assignment(self, tile_result: Dict, tile_box: np.ndarray, gt_bboxes: np.ndarray,
-                              gt_masks: BitmapMasks, gt_labels: np.ndarray) -> Dict:
+    def tile_ann_assignment(self, tile_result: Dict, tile_box: np.ndarray, gt_bboxes: np.ndarray,
+                            gt_masks: BitmapMasks, gt_labels: np.ndarray) -> Dict:
         """Assign new annotation to this tile.
 
         Ground-truth is discarded if the overlap with this tile is lower than
@@ -197,7 +197,7 @@ class Tile:
             Dict: bboxes, masks in this tile, labels in this tile
         """
         x_1, y_1 = tile_box[0][:2]
-        overlap_ratio = self.__tile_boxes_overlap(tile_box, gt_bboxes)
+        overlap_ratio = self.tile_boxes_overlap(tile_box, gt_bboxes)
         match_idx = np.where((overlap_ratio[0] >= self.min_area_ratio))[0]
 
         if len(match_idx):
@@ -223,7 +223,7 @@ class Tile:
             tile_result['gt_labels'] = []
             tile_result['gt_masks'] = []
 
-    def __slice_2d(self, length: int) -> List[Tuple[float, float]]:
+    def slice_2d(self, length: int) -> List[Tuple[float, float]]:
         """Slices a segment of any length based on the tile size and stride of
         the tiler.
 
@@ -244,7 +244,7 @@ class Tile:
             segments.add((start, end))
         return list(segments)
 
-    def __tile_boxes_overlap(self, tile_box: np.ndarray, boxes: np.ndarray) -> np.ndarray:
+    def tile_boxes_overlap(self, tile_box: np.ndarray, boxes: np.ndarray) -> np.ndarray:
         """Compute overlapping ratio over boxes.
 
         Args:
@@ -265,8 +265,8 @@ class Tile:
         tile_box_ratio = np.where(inter > 0, inter / box_area, np.zeros(1, dtype=inter.dtype))
         return tile_box_ratio
 
-    def __multiclass_nms(self, boxes: np.ndarray, scores: np.ndarray, idxs: np.ndarray, iou_threshold: float,
-                         max_num: int):
+    def multiclass_nms(self, boxes: np.ndarray, scores: np.ndarray, idxs: np.ndarray, iou_threshold: float,
+                       max_num: int):
         """NMS for multi-class bboxes.
 
         Args:
@@ -293,8 +293,8 @@ class Tile:
         return dets, keep
 
     @timeit
-    def __tile_nms(self, bbox_results: List[np.ndarray], mask_results: List[List], label_results: List[np.ndarray],
-                   iou_threshold: float, max_per_img: int):
+    def tile_nms(self, bbox_results: List[np.ndarray], mask_results: List[List], label_results: List[np.ndarray],
+                 iou_threshold: float, max_per_img: int):
         """NMS after aggregation suppressing duplicate boxes in tile-overlap
         areas.
 
@@ -310,7 +310,7 @@ class Tile:
             score_bboxes, masks, labels = result
             bboxes = score_bboxes[:, :4]
             scores = np.ascontiguousarray(score_bboxes[:, 4])
-            _, keep_indices = self.__multiclass_nms(
+            _, keep_indices = self.multiclass_nms(
                 bboxes,
                 scores,
                 labels,
@@ -321,7 +321,7 @@ class Tile:
             labels = labels[keep_indices]
             scores = scores[keep_indices]
             masks = [masks[keep_idx] for keep_idx in keep_indices]
-            masks = self.__process_masks(masks)
+            masks = self.process_masks(masks)
 
             bbox_results[i] = bbox2result(np.concatenate(
                 [bboxes, scores[:, None]], -1), labels, self.num_classes)
@@ -329,7 +329,7 @@ class Tile:
             mask_results[i] = [list(np.asarray(masks)[labels == i]) for i in range(self.num_classes)]
 
     def __len__(self):
-        return len(self.__tiles)
+        return len(self.tiles)
 
     def __getitem__(self, idx):
         """Get training/test tile.
@@ -340,13 +340,13 @@ class Tile:
         Returns:
             dict: Training/test data.
         """
-        result = copy.deepcopy(self.__tiles[idx])
+        result = copy.deepcopy(self.tiles[idx])
         if osp.isfile(result['tile_path']):
             result['img'] = mmcv.imread(result['tile_path'])
             return result
         dataset_idx = result['dataset_idx']
         x_1, y_1, x_2, y_2 = result['tile_box']
-        ori_img = self.__dataset[dataset_idx]['img']
+        ori_img = self.dataset[dataset_idx]['img']
         result['img'] = ori_img[y_1:y_2, x_1:x_2, :]
         return result
 
@@ -358,7 +358,7 @@ class Tile:
         tile_mask = np.pad(tile_mask, ((y1, H - y2), (x1, W - x2)))
         return mask_util.encode(tile_mask)
 
-    def __process_masks(self, tile_masks: List[Dict]):
+    def process_masks(self, tile_masks: List[Dict]):
         """ Decode Mask Result to Numpy mask, add paddings then encode masks again.
 
         Args:
@@ -372,7 +372,7 @@ class Tile:
         return results
 
     @timeit
-    def __merge(self, results: List[List]) -> List[List]:
+    def merge(self, results: List[List]) -> List[List]:
         """Merge/Aggregate tile-level prediction to image-level prediction.
 
         Args:
@@ -381,7 +381,7 @@ class Tile:
         Returns:
             List[List]: Testing image results of the dataset.
         """
-        assert len(results) == len(self.__tiles)
+        assert len(results) == len(self.tiles)
 
         if isinstance(results[0], tuple):
             num_classes = len(results[0][0])
@@ -396,7 +396,7 @@ class Tile:
         merged_mask_results = [[] for _ in range(self.num_images)]
         merged_label_results = [[] for _ in range(self.num_images)]
 
-        for n, (result, tile) in enumerate(zip(results, self.__tiles)):
+        for result, tile in zip(results, self.tiles):
             tile_x1, tile_y1, tile_x2, tile_y2 = tile['tile_box']
             img_idx = tile['dataset_idx']
             img_h, img_w, _ = tile['original_shape_']
@@ -418,14 +418,14 @@ class Tile:
                 merged_label_results[img_idx] = np.concatenate([merged_label_results[img_idx],
                                                                 len(cls_bbox_result) * [cls_idx]])
 
-                for mask_result in cls_mask_result:
-                    mask_result.update(dict(tile_box=tile['tile_box'], img_size=(img_h, img_w)))
+                for m in cls_mask_result:
+                    m.update(dict(tile_box=tile['tile_box'], img_size=(img_h, img_w)))
 
                 merged_mask_results[img_idx] += cls_mask_result
 
         # run NMS after aggregation suppressing duplicate boxes in
         # overlapping areas
-        self.__tile_nms(
+        self.tile_nms(
             merged_bbox_results,
             merged_mask_results,
             merged_label_results,
@@ -447,5 +447,5 @@ class Tile:
         Returns:
             dict[str, float]: evaluation metric.
         """
-        merged_results = self.__merge(results)
-        return self.__dataset.evaluate(merged_results, **kwargs)
+        merged_results = self.merge(results)
+        return self.dataset.evaluate(merged_results, **kwargs)

@@ -455,6 +455,7 @@ class ImageTilingDataset:
         self.flag = np.zeros(len(self), dtype=np.uint8)
         self.pipeline = Compose(pipeline)
         self.test_mode = test_mode
+        self.num_samples = len(dataset)  # number of original samples
 
     def __len__(self) -> int:
         return len(self.tile_dataset)
@@ -480,6 +481,9 @@ class ImageTilingDataset:
             dict[str, float]: evaluation metric.
         """
         return self.tile_dataset.evaluate(results, **kwargs)
+
+    def merge(self, results):
+        return self.tile_dataset.merge(results)
 
     def __del__(self):
         if getattr(self, 'tmp_dir', False):
