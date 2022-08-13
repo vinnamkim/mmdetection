@@ -131,8 +131,8 @@ class MAE:
     Returns:
         _type_: _description_
     """
-    box_score_index = 4
-    box_class_index = 5
+    box_score_index = 0
+    box_class_index = 1
 
     def __init__(self, cocoDt, cocoGt, vary_confidence_threshold: bool = False):
         confidence_range = [0.025, 1.0, 0.025]
@@ -436,9 +436,8 @@ class MAE:
 
 
 class CustomMAE(MAE):
-    def __init__(self, pred_bboxes, gt_bboxes, \
-                 vary_confidence_threshold: bool = False, \
-                 labels: list = [], img_ids: list = []):
+    def __init__(self, pred_bboxes, gt_bboxes, vary_confidence_threshold: bool = False, labels: list = [], 
+                 img_ids: list = []):
         confidence_range = [0.025, 1.0, 0.025]
         confidence_values = list(np.arange(*confidence_range))
         prediction_boxes_per_image = self.prepare(pred_bboxes, img_ids)
@@ -446,8 +445,6 @@ class CustomMAE(MAE):
         assert len(prediction_boxes_per_image) == len(
             ground_truth_boxes_per_image)
         classes = {i: v for i, v in enumerate(labels)}
-        
-
         result = self.evaluate_detections(
             ground_truth_boxes_per_image=ground_truth_boxes_per_image,
             predicted_boxes_per_image=prediction_boxes_per_image,
@@ -498,10 +495,6 @@ class CustomMAE(MAE):
                 new_annotations[image_id] = []
         for result in results:
             image_id = result['image_id']
-            x1, y1, w, h = result["bbox"]
             score = result["score"] if "score" in result else 1.0
-            new_annotations[image_id].append(
-                [x1, y1, x1 + w, y1 + h, score, result["category_id"]]
-            )
-
+            new_annotations[image_id].append([score, result["category_id"]])
         return new_annotations

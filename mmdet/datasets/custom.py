@@ -373,53 +373,31 @@ class CustomDataset(Dataset):
                     eval_results[f'mIoU{int(iou_thr * 100):02d}'] = round(mean_iou, 3)
                 eval_results['mIoU'] = sum(mean_mious) / len(mean_mious)
             elif metric == 'mae':
-                bbox_results, gt_results, img_ids = self.get_pred_bbox(results, annotations)
+                bbox_results, gt_results, img_ids = self.convert(results, annotations)
+                if not len(gt_results):
+                    # TODO[EUGENE]: very gypsy style
+                    continue
                 mae = CustomMAE(bbox_results, gt_results, vary_confidence_threshold=True, labels=self.CLASSES, img_ids=img_ids)
-                eval_results['MAE best score'] = float(
-                    f'{mae.mae.value:.3f}')
-                eval_results['MAE conf thres'] = float(
-                    f'{mae.best_confidence_threshold.value:.3f}')
+                eval_results['MAE best score'] = float(f'{mae.mae.value:.3f}')
+                eval_results['MAE conf thres'] = float(f'{mae.best_confidence_threshold.value:.3f}')
                 print(f'MAE best score = {mae.mae.value:.3f}')
-                print(
-                    f'MAE conf thres = {mae.best_confidence_threshold.value:.3f}')
+                print(f'MAE conf thres = {mae.best_confidence_threshold.value:.3f}')
                 for class_name, score_metric in mae.mae_per_label.items():
-                    eval_results[f'MAE:{class_name}'] = float(
-                        f'{score_metric.value:.3f}')
+                    eval_results[f'MAE:{class_name}'] = float(f'{score_metric.value:.3f}')
                     print(f'MAE:{class_name} = {score_metric.value:.3f}')
 
-                eval_results['Relative MAE best score'] = float(
-                    f'{mae.relative_mae.value:.3f}')
-                print(
-                    f'Relative MAE best score = {mae.relative_mae.value:.3f}')
+                eval_results['Relative MAE best score'] = float(f'{mae.relative_mae.value:.3f}')
+                print(f'Relative MAE best score = {mae.relative_mae.value:.3f}')
                 for class_name, score_metric in mae.relative_mae_per_label.items():
                     eval_results[f'Relative MAE:{class_name}'] = float(
                         f'{score_metric.value:.3f}')
-                    print(
-                        f'Relative MAE:{class_name} = {score_metric.value:.3f}')
+                    print(f'Relative MAE:{class_name} = {score_metric.value:.3f}')
+                eval_results['mae'] = eval_results['MAE best score']
+                eval_results['mae%'] = eval_results['Relative MAE best score']
         return eval_results
 
-    def get_pred_bbox(self, results, annotations):
+    def convert(self, results, annotations):
         """Convert instance segmentation results to COCO json style."""
-        
-        def xyxy2xywh(bbox):
-            """Convert ``xyxy`` style bounding boxes to ``xywh`` style for COCO
-            evaluation.
-
-            Args:
-                bbox (numpy.ndarray): The bounding boxes, shape (4, ), in
-                    ``xyxy`` order.
-
-            Returns:
-                list[float]: The converted bounding boxes, in ``xywh`` order.
-            """
-
-            _bbox = bbox.tolist()
-            return [
-                _bbox[0],
-                _bbox[1],
-                _bbox[2] - _bbox[0],
-                _bbox[3] - _bbox[1],
-            ]
         
         bbox_results = []
         gt_results = []
@@ -428,44 +406,22 @@ class CustomDataset(Dataset):
             img_id = idx
             img_ids.append(img_id)
             det, _ = results[idx][:2]
-            cat_ids = self.get_cat_ids(idx)
             for label in range(len(det)):
-                # bbox results
                 bboxes = det[label]
                 for i in range(bboxes.shape[0]):
                     data = dict()
                     data['image_id'] = img_id
-                    data['bbox'] = xyxy2xywh(bboxes[i])
                     data['score'] = float(bboxes[i][4])
-                    data['category_id'] = cat_ids[label]
+                    data['category_id'] = label
                     bbox_results.append(data)
-            # # segm results
-            # # some detectors use different scores for bbox and mask
-            # if isinstance(seg, tuple):
-            #     segms = seg[0][label]
-            #     mask_score = seg[1][label]
-            # else:
-            #     segms = seg[label]
-            #     mask_score = [bbox[4] for bbox in bboxes]
-            # for i in range(bboxes.shape[0]):
-            #     data = dict()
-            #     data['image_id'] = img_id
-            #     data['bbox'] = xyxy2xywh(bboxes[i])
-            #     data['score'] = float(mask_score[i])
-            #     data['category_id'] = cat_ids[label]
-            #     if isinstance(segms[i]['counts'], bytes):
-            #         segms[i]['counts'] = segms[i]['counts'].decode()
-            #     data['segmentation'] = segms[i]
-            #     segm_results.append(data)
 
             # gt bboxes
             gt_annotation = annotations[idx]
-            bboxes =  gt_annotation['bboxes']
+            bboxes = gt_annotation['bboxes']
             labels = gt_annotation['labels']
             for i in range(bboxes.shape[0]):
                 data = dict()
                 data['image_id'] = img_id
-                data['bbox'] = bboxes[i]
                 data['category_id'] = labels[i]
                 gt_results.append(data)
 
