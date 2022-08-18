@@ -92,6 +92,7 @@ class Tile:
 
     @timeit
     def cache_tiles(self):
+        # TODO[EUGENE]: INCLUDE ORIGINAL IMAGE FOR TRAINING AS WELL
         pbar = tqdm(total=len(self.tiles))
         pre_img_idx = None
         for i, tile in enumerate(self.tiles):
@@ -292,7 +293,6 @@ class Tile:
             keep = keep[:max_num]
         return dets, keep
 
-    @timeit
     def tile_nms(self, bbox_results: List[np.ndarray], mask_results: List[List], label_results: List[np.ndarray],
                  iou_threshold: float, max_per_img: int):
         """NMS after aggregation suppressing duplicate boxes in tile-overlap

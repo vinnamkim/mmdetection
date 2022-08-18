@@ -373,11 +373,8 @@ class CustomDataset(Dataset):
                     eval_results[f'mIoU{int(iou_thr * 100):02d}'] = round(mean_iou, 3)
                 eval_results['mIoU'] = sum(mean_mious) / len(mean_mious)
             elif metric == 'mae':
-                bbox_results, gt_results, img_ids = self.convert(results, annotations)
-                if not len(gt_results):
-                    # TODO[EUGENE]: very gypsy style
-                    continue
-                mae = CustomMAE(bbox_results, gt_results, vary_confidence_threshold=True, labels=self.CLASSES, img_ids=img_ids)
+                mae = CustomMAE(self.ote_dataset, results, annotations, vary_confidence_threshold=True,
+                                labels=self.CLASSES)
                 eval_results['MAE best score'] = float(f'{mae.mae.value:.3f}')
                 eval_results['MAE conf thres'] = float(f'{mae.best_confidence_threshold.value:.3f}')
                 print(f'MAE best score = {mae.mae.value:.3f}')
@@ -395,34 +392,3 @@ class CustomDataset(Dataset):
                 eval_results['mae'] = eval_results['MAE best score']
                 eval_results['mae%'] = eval_results['Relative MAE best score']
         return eval_results
-
-    def convert(self, results, annotations):
-        """Convert instance segmentation results to COCO json style."""
-        
-        bbox_results = []
-        gt_results = []
-        img_ids = []
-        for idx in range(len(self)):
-            img_id = idx
-            img_ids.append(img_id)
-            det, _ = results[idx][:2]
-            for label in range(len(det)):
-                bboxes = det[label]
-                for i in range(bboxes.shape[0]):
-                    data = dict()
-                    data['image_id'] = img_id
-                    data['score'] = float(bboxes[i][4])
-                    data['category_id'] = label
-                    bbox_results.append(data)
-
-            # gt bboxes
-            gt_annotation = annotations[idx]
-            bboxes = gt_annotation['bboxes']
-            labels = gt_annotation['labels']
-            for i in range(bboxes.shape[0]):
-                data = dict()
-                data['image_id'] = img_id
-                data['category_id'] = labels[i]
-                gt_results.append(data)
-
-        return bbox_results, gt_results, img_ids

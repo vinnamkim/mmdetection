@@ -1,9 +1,9 @@
+import os
 import math
-from mmdet.core import bbox
 import numpy as np
-from collections import OrderedDict
-from typing import Dict, List, Optional, Tuple
-from sklearn.metrics import mean_absolute_error
+from collections import defaultdict, OrderedDict
+from typing import Dict, List, Optional, Tuple, Union
+from prettytable import PrettyTable
 
 
 class ScoreMetric:
@@ -14,8 +14,7 @@ class ScoreMetric:
         self.value = value
 
         if math.isnan(value):
-            raise ValueError(
-                "The value of a ScoreMetric is not allowed to be NaN.")
+            raise ValueError("The value of a ScoreMetric is not allowed to be NaN.")
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, ScoreMetric):
@@ -101,9 +100,7 @@ class _ResultCounters:
 
 
 class _Metrics:
-    def __init__(
-        self, mae: float, relative_mae: float, y_pred: np.ndarray, y_true: np.ndarray
-    ):
+    def __init__(self, mae: float, relative_mae: float, y_pred: np.ndarray, y_true: np.ndarray):
         self.mae = mae
         self.relative_mae = relative_mae
         self.y_pred = y_pred
@@ -131,16 +128,18 @@ class MAE:
     Returns:
         _type_: _description_
     """
-    box_score_index = 0
-    box_class_index = 1
 
-    def __init__(self, cocoDt, cocoGt, vary_confidence_threshold: bool = False):
+    def __init__(self, cocoDt, cocoGt, vary_confidence_threshold: bool = False, metric='mae', show_table=False):
+        assert metric in ['mae', 'mae%']
+        self.metric = metric
+        self.box_score_index = 4
+        self.box_class_index = 5
+        self.show_table = show_table
         confidence_range = [0.025, 1.0, 0.025]
         confidence_values = list(np.arange(*confidence_range))
         prediction_boxes_per_image = self.prepare(cocoDt)
         ground_truth_boxes_per_image = self.prepare(cocoGt)
-        assert len(prediction_boxes_per_image) == len(
-            ground_truth_boxes_per_image)
+        assert len(prediction_boxes_per_image) == len(ground_truth_boxes_per_image)
         classes = {v["id"]: v["name"] for k, v in cocoGt.cats.items()}
 
         result = self.evaluate_detections(
@@ -151,21 +150,16 @@ class MAE:
             img_ids=cocoGt.getImgIds(),
         )
 
-        self._mae = ScoreMetric(
-            name="mean-absolute-error", value=result.best_mae)
-
-        self._relative_mae = ScoreMetric(
-            name="relative-mean-absolute-error", value=result.best_relative_mae
-        )
+        self._mae = ScoreMetric(name="mean-absolute-error", value=result.best_mae)
+        self._relative_mae = ScoreMetric(name="relative-mean-absolute-error", value=result.best_relative_mae)
 
         mae_per_label: Dict[str, ScoreMetric] = {}
         relative_mae_per_label: Dict[str, ScoreMetric] = {}
         for class_idx, class_name in classes.items():
-            mae_per_label[class_name] = ScoreMetric(
-                name=class_name, value=result.best_mae_per_class[class_name]
-            )
+            mae_per_label[class_name] = ScoreMetric(name=class_name, value=result.best_mae_per_class[class_name])
             relative_mae_per_label[class_name] = ScoreMetric(
-                name=class_name, value=result.best_relative_mae_per_class[class_name]
+                name=class_name,
+                value=result.best_relative_mae_per_class[class_name]
             )
         self._mae_per_label = mae_per_label
         self._relative_mae_per_label = relative_mae_per_label
@@ -228,13 +222,13 @@ class MAE:
         best_relative_mae = results_per_confidence.best_relative_mae
 
         for _, class_name in classes.items():
-            idx = np.argmin(results_per_confidence.mae_curve[class_name])
-            best_mae_per_class[class_name] = results_per_confidence.mae_curve[
-                class_name
-            ][idx]
-            best_relative_mae_per_class[
-                class_name
-            ] = results_per_confidence.relative_mae_curve[class_name][idx]
+            if self.metric == 'mae':
+                curve = results_per_confidence.mae_curve[class_name]
+            elif self.metric == 'mae%':
+                curve = results_per_confidence.relative_mae_curve[class_name]
+            idx = np.argmin(curve)
+            best_mae_per_class[class_name] = results_per_confidence.mae_curve[class_name][idx]
+            best_relative_mae_per_class[class_name] = results_per_confidence.relative_mae_curve[class_name][idx]
 
         result = _OverallResults(
             results_per_confidence,
@@ -252,46 +246,46 @@ class MAE:
         classes: Dict[int, str],
         confidence_range: List[float],
         img_ids,
-        all_classes_name: str = "All Classes",
+        all_classes_name: str = "All Classes"
     ) -> _AggregatedResults:
 
         result = _AggregatedResults(
             mae_curve={class_name: [] for _, class_name in classes.items()},
-            relative_mae_curve={class_name: []
-                                for _, class_name in classes.items()},
+            relative_mae_curve={class_name: [] for _, class_name in classes.items()},
             all_classes_mae_curve=[],
             all_classes_relative_mae_curve=[],
             best_y_pred=[],
             best_y_true=[],
-            best_mae=9999.0,
-            best_relative_mae=9999.0,
-            best_threshold=0.1,
-        )
+            best_mae=float('inf'),
+            best_relative_mae=float('inf'),
+            best_threshold=0.1)
 
         for confidence_threshold in np.arange(*confidence_range):
             result_point = self.evaluate_classes(
                 ground_truth_boxes_per_image=ground_truth_boxes_per_image,
-                predicted_boxes_per_image=MAE.filter_confidence(
-                    predicted_boxes_per_image, confidence_threshold
-                ),
+                predicted_boxes_per_image=predicted_boxes_per_image,
                 classes=classes,
                 img_ids=img_ids,
+                conf_thresold=confidence_threshold
             )
             all_classes_mae = result_point[all_classes_name].mae
             all_classes_relative_mae = result_point[all_classes_name].relative_mae
             y_true = result_point[all_classes_name].y_true
             y_pred = result_point[all_classes_name].y_pred
             result.all_classes_mae_curve.append(all_classes_mae)
-            result.all_classes_relative_mae_curve.append(
-                all_classes_relative_mae)
+            result.all_classes_relative_mae_curve.append(all_classes_relative_mae)
             for _, class_name in classes.items():
-                result.mae_curve[class_name].append(
-                    result_point[class_name].mae)
-                result.relative_mae_curve[class_name].append(
-                    result_point[class_name].relative_mae
-                )
+                result.mae_curve[class_name].append(result_point[class_name].mae)
+                result.relative_mae_curve[class_name].append(result_point[class_name].relative_mae)
 
-            if all_classes_mae < result.best_mae:
+            if self.metric == 'mae':
+                global_best = all_classes_mae
+                curr_best = result.best_mae
+            elif self.metric == 'mae%':
+                global_best = all_classes_relative_mae
+                curr_best = result.best_relative_mae
+
+            if global_best < curr_best:
                 result.best_mae = all_classes_mae
                 result.best_relative_mae = all_classes_relative_mae
                 result.best_threshold = confidence_threshold
@@ -299,41 +293,37 @@ class MAE:
                 result.best_y_true = y_true
         return result
 
-    @staticmethod
-    def evaluate_classes(
-        ground_truth_boxes_per_image: Dict,
-        predicted_boxes_per_image: Dict,
-        classes: Dict[int, str],
-        img_ids,
-    ) -> Dict[str, _Metrics]:
+    def evaluate_classes(self, ground_truth_boxes_per_image: Dict, predicted_boxes_per_image: Dict,
+                         classes: Dict[int, str], img_ids: List[Union[int, str]], conf_thresold: float
+                         ) -> Dict[str, _Metrics]:
 
         all_classes_name = "All Classes"
         result: Dict[str, _Metrics] = {}
 
+        predicted_boxes_per_image = self.filter_confidence(predicted_boxes_per_image, conf_thresold)
         diffs = []
         relative_ae_diffs = []
         y_preds = []
         y_trues = []
         for class_idx, class_name in classes.items():
-            class_ground_truth_boxes_per_image = MAE.filter_class(
-                ground_truth_boxes_per_image, class_idx
-            )
-
-            class_predicted_boxes_per_image = MAE.filter_class(
-                predicted_boxes_per_image,
-                class_idx,
-            )
-
-            metrics = MAE.get_mae(
-                class_ground_truth_boxes_per_image,
-                class_predicted_boxes_per_image,
-                img_ids=img_ids,
-            )
+            class_ground_truth_boxes_per_image = self.filter_class(ground_truth_boxes_per_image, class_idx)
+            class_predicted_boxes_per_image = self.filter_class(predicted_boxes_per_image, class_idx)
+            metrics = self.get_mae(class_ground_truth_boxes_per_image, class_predicted_boxes_per_image, img_ids=img_ids)
 
             y_preds.extend(list(metrics.y_pred))
             y_trues.extend(list(metrics.y_true))
             diff = list(np.abs(metrics.y_pred - metrics.y_true))
-            relative_ae_diff = list(diff / metrics.y_true)
+            relative_ae_diff = list(np.round(diff / (metrics.y_true + 1e-16), 2))
+
+            if self.show_table:
+                table = PrettyTable()
+                table.add_column(f"names-{class_name}-thres:{conf_thresold:.3f}", list(img_ids))
+                table.add_column("y_pred", list(metrics.y_pred))
+                table.add_column("y_true", list(metrics.y_true))
+                table.add_column("diff", diff)
+                table.add_column("error%", relative_ae_diff)
+                print(table)
+
             result[class_name] = metrics
             diffs.extend(diff)
             relative_ae_diffs.extend(relative_ae_diff)
@@ -347,37 +337,23 @@ class MAE:
         )
         return result
 
-    @staticmethod
     def get_mae(
+        self,
         class_ground_truth_boxes_per_image: Dict,
         class_predicted_boxes_per_image: Dict,
-        img_ids: List[int],
+        img_ids: List[Union[int, str]],
     ) -> Tuple[_Metrics, _ResultCounters]:
 
-        y_pred = np.array(
-            [len(class_predicted_boxes_per_image[idx]) for idx in img_ids]
-        )
-        y_true = np.array(
-            [len(class_ground_truth_boxes_per_image[idx]) for idx in img_ids]
-        )
-
-        keep_indices = y_true != 0
-        y_pred = y_pred[keep_indices]
-        y_true = y_true[keep_indices]
+        y_pred = np.array([len(class_predicted_boxes_per_image[idx]) for idx in img_ids])
+        y_true = np.array([len(class_ground_truth_boxes_per_image[idx]) for idx in img_ids])
 
         diff = np.abs(y_pred - y_true)
-        relative_ae = list(diff / y_true)
+        relative_ae = list(diff / (y_true + 1e-16))
 
-        results = _Metrics(
-            mae=np.average(diff),
-            relative_mae=np.average(relative_ae),
-            y_pred=y_pred,
-            y_true=y_true,
-        )
+        results = _Metrics(mae=np.average(diff), relative_mae=np.average(relative_ae), y_pred=y_pred, y_true=y_true)
         return results
 
-    @staticmethod
-    def filter_class(boxes_per_image: Dict, class_idx: int) -> OrderedDict:
+    def filter_class(self, boxes_per_image: Dict, class_idx: int) -> OrderedDict:
         """
         Filters boxes to only keep members of one class
         :param boxes_per_image:
@@ -388,15 +364,12 @@ class MAE:
         for image_id, boxes in boxes_per_image.items():
             filtered_boxes = []
             for box in boxes:
-                if box[MAE.box_class_index] == class_idx:
+                if box[self.box_class_index] == class_idx:
                     filtered_boxes.append(box)
             filtered_boxes_per_image[image_id] = filtered_boxes
         return filtered_boxes_per_image
 
-    @staticmethod
-    def filter_confidence(
-        boxes_per_image: Dict, confidence_threshold: float
-    ) -> OrderedDict:
+    def filter_confidence(self, boxes_per_image: Dict, confidence_threshold: float) -> OrderedDict:
         """
         Filters boxes to only keep ones with higher confidence than a given confidence threshold
         :param boxes_per_image: shape List[List[[Tuple[float, str]]]:
@@ -409,7 +382,7 @@ class MAE:
         for image_id, boxes in boxes_per_image.items():
             filtered_boxes = []
             for box in boxes:
-                if float(box[MAE.box_score_index]) > confidence_threshold:
+                if float(box[self.box_score_index]) > confidence_threshold:
                     filtered_boxes.append(box)
             filtered_boxes_per_image[image_id] = filtered_boxes
         return filtered_boxes_per_image
@@ -436,39 +409,38 @@ class MAE:
 
 
 class CustomMAE(MAE):
-    def __init__(self, pred_bboxes, gt_bboxes, vary_confidence_threshold: bool = False, labels: list = [], 
-                 img_ids: list = []):
+
+    def __init__(self, ote_dataset, prediction, ground_truth, vary_confidence_threshold: bool = False,
+                 labels: list = [], metric='mae', show_table=True):
+        assert metric in ['mae', 'mae%']
+        self.metric = metric
+        self.box_score_index = 0
+        self.box_class_index = 1
+        self.show_table = show_table
         confidence_range = [0.025, 1.0, 0.025]
         confidence_values = list(np.arange(*confidence_range))
-        prediction_boxes_per_image = self.prepare(pred_bboxes, img_ids)
-        ground_truth_boxes_per_image = self.prepare(gt_bboxes, img_ids)
-        assert len(prediction_boxes_per_image) == len(
-            ground_truth_boxes_per_image)
+        file_names = [os.path.basename(sample.media._Image__file_path) for sample in ote_dataset]
+        prediction_boxes_per_image = self.prepare_pred(prediction, file_names)
+        ground_truth_boxes_per_image = self.prepare_gt(ground_truth, file_names)
+        assert len(prediction_boxes_per_image) == len(ground_truth_boxes_per_image)
         classes = {i: v for i, v in enumerate(labels)}
         result = self.evaluate_detections(
             ground_truth_boxes_per_image=ground_truth_boxes_per_image,
             predicted_boxes_per_image=prediction_boxes_per_image,
             confidence_range=confidence_range,
             classes=classes,
-            img_ids=img_ids,
+            img_ids=file_names,
         )
 
-        self._mae = ScoreMetric(
-            name="mean-absolute-error", value=result.best_mae)
-
-        self._relative_mae = ScoreMetric(
-            name="relative-mean-absolute-error", value=result.best_relative_mae
-        )
+        self._mae = ScoreMetric(name="mean-absolute-error", value=result.best_mae)
+        self._relative_mae = ScoreMetric(name="relative-mean-absolute-error", value=result.best_relative_mae)
 
         mae_per_label: Dict[str, ScoreMetric] = {}
         relative_mae_per_label: Dict[str, ScoreMetric] = {}
         for class_idx, class_name in classes.items():
-            mae_per_label[class_name] = ScoreMetric(
-                name=class_name, value=result.best_mae_per_class[class_name]
-            )
+            mae_per_label[class_name] = ScoreMetric(name=class_name, value=result.best_mae_per_class[class_name])
             relative_mae_per_label[class_name] = ScoreMetric(
-                name=class_name, value=result.best_relative_mae_per_class[class_name]
-            )
+                name=class_name, value=result.best_relative_mae_per_class[class_name])
         self._mae_per_label = mae_per_label
         self._relative_mae_per_label = relative_mae_per_label
 
@@ -488,13 +460,27 @@ class CustomMAE(MAE):
             self._mae_per_confidence = mae_per_confidence
             self._best_confidence_threshold = best_confidence_threshold
 
-    def prepare(self, results, img_ids) -> OrderedDict:
-        new_annotations = OrderedDict()
-        for image_id in img_ids:
-            if image_id not in new_annotations:
-                new_annotations[image_id] = []
-        for result in results:
-            image_id = result['image_id']
-            score = result["score"] if "score" in result else 1.0
-            new_annotations[image_id].append([score, result["category_id"]])
-        return new_annotations
+    def prepare_pred(self, results, img_names):
+        assert len(results) == len(img_names), "Number of samples not the same"
+        prediction_per_image = defaultdict(list)
+        for img_name, pred_result in zip(img_names, results):
+            if isinstance(pred_result, tuple):
+                pred_result, _ = pred_result
+            for cls_idx, cls_pred in enumerate(pred_result):
+                scores = cls_pred[:, -1]
+                labels = [cls_idx] * len(scores)
+                for score, label in zip(scores, labels):
+                    prediction_per_image[img_name].append((score, label))
+        return prediction_per_image
+
+    def prepare_gt(self, annotation, img_names):
+        assert len(annotation) == len(img_names), "Number of samples not the same"
+        ground_truth_per_image = dict()
+        for img_name, anno in zip(img_names, annotation):
+            if img_name not in ground_truth_per_image:
+                ground_truth_per_image[img_name] = []
+            if len(anno['labels']) == 0:
+                continue
+            for label in anno['labels']:
+                ground_truth_per_image[img_name].append((1.0, label))
+        return ground_truth_per_image
