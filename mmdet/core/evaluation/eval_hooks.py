@@ -12,6 +12,7 @@ import os
 import os.path as osp
 import torch.distributed as dist
 import warnings
+import time
 from math import inf
 from mmcv.runner import Hook
 from mmcv.utils import is_seq_of
@@ -227,9 +228,11 @@ class EvalHook(Hook):
             return
 
         from mmdet.apis import single_gpu_test
+        start_time = time.perf_counter()
         results = single_gpu_test(runner.model, self.dataloader, show=False)
         runner.log_buffer.output['eval_iter_num'] = len(self.dataloader)
         key_score = self.evaluate(runner, results)
+        runner.log_buffer.output['eval_elapsed'] = time.perf_counter() - start_time
         if self.save_best:
             self._save_ckpt(runner, key_score)
 
