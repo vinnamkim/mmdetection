@@ -312,10 +312,7 @@ class CustomDataset(Dataset):
                 Default: None.
         """
         metrics = metric if isinstance(metric, list) else [metric]
-        # if not isinstance(metric, str):
-        #     assert len(metric) == 1
-        #     metric = metric[0]
-        allowed_metrics = ['mAP', 'recall', 'mIoU', 'mae']
+        allowed_metrics = ['mAP', 'recall', 'mIoU', 'mae', 'mae%']
         eval_results = OrderedDict()
         for metric in metrics:
             if metric not in allowed_metrics:
