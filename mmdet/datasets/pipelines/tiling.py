@@ -409,12 +409,14 @@ class Tile:
 
             for cls_idx, cls_result in enumerate(zip(bbox_result, mask_result)):
                 cls_bbox_result, cls_mask_result = cls_result
-                cls_bbox_result[:, 0] = cls_bbox_result[:, 0] + tile_x1
-                cls_bbox_result[:, 1] = cls_bbox_result[:, 1] + tile_y1
-                cls_bbox_result[:, 2] = cls_bbox_result[:, 2] + tile_x1
-                cls_bbox_result[:, 3] = cls_bbox_result[:, 3] + tile_y1
+                _tmp_cls_bbox_result = np.zeros_like(cls_bbox_result)
+                _tmp_cls_bbox_result[:, 0] = cls_bbox_result[:, 0] + tile_x1
+                _tmp_cls_bbox_result[:, 1] = cls_bbox_result[:, 1] + tile_y1
+                _tmp_cls_bbox_result[:, 2] = cls_bbox_result[:, 2] + tile_x1
+                _tmp_cls_bbox_result[:, 3] = cls_bbox_result[:, 3] + tile_y1
+                _tmp_cls_bbox_result[:, 4] = cls_bbox_result[:, 4]
 
-                merged_bbox_results[img_idx] = np.concatenate((merged_bbox_results[img_idx], cls_bbox_result))
+                merged_bbox_results[img_idx] = np.concatenate((merged_bbox_results[img_idx], _tmp_cls_bbox_result))
                 merged_label_results[img_idx] = np.concatenate([merged_label_results[img_idx],
                                                                 len(cls_bbox_result) * [cls_idx]])
 
