@@ -23,7 +23,10 @@ from .inference import LoadImage
 
 
 def get_fake_input(cfg, orig_img_shape=(128, 128, 3), device='cuda'):
-    test_pipeline = [LoadImage()] + cfg.data.test.pipeline[1:]
+    test_pipeline = [LoadImage()]
+    for pipeline in cfg.data.test.pipeline:
+        if 'LoadImage' not in pipeline['type']:
+            test_pipeline.append(pipeline)
     test_pipeline = Compose(test_pipeline)
     data = dict(img=np.zeros(orig_img_shape, dtype=np.uint8))
     data = test_pipeline(data)

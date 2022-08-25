@@ -158,9 +158,12 @@ def export_to_openvino(cfg, onnx_model_path, output_dir_path, input_shape=None,
 
     mo_cmd = _get_mo_cmd()
 
-    assert cfg.data.test.pipeline[1]['type'] == 'MultiScaleFlipAug'
-    normalize = [v for v in cfg.data.test.pipeline[1]['transforms']
-                 if v['type'] == 'Normalize'][0]
+    normalize = None
+    for pipeline in cfg.data.test.pipeline:
+        if pipeline['type'] == 'MultiScaleFlipAug':
+            normalize = [v for v in pipeline['transforms'] if v['type'] == 'Normalize'][0]
+            break
+    assert normalize, "Could not find normalize parameters in datapipeline"
 
     mean_values = normalize['mean']
     scale_values = normalize['std']
