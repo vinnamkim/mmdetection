@@ -410,6 +410,7 @@ class MAE:
 
 class CustomMAE(MAE):
 
+    # TODO[EUGENE]: report rel-MAE with Σ|y_pred - y_true|/ Σ y_true
     def __init__(self, ote_dataset, prediction, ground_truth, vary_confidence_threshold: bool = False,
                  labels: list = [], metric='mae', show_table=True):
         assert metric in ['mae', 'mae%']
