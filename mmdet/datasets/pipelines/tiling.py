@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions
 # and limitations under the License.
 
+from itertools import product
 import copy
 import os.path as osp
 import tempfile
@@ -140,27 +141,34 @@ class Tile:
         gt_labels = result.pop('gt_labels', np.array([], dtype=np.int64))
         img_shape = result.pop('img_shape')
         height, width = img_shape[:2]
-        y_segments = self.slice_2d(height)
-        x_segments = self.slice_2d(width)
         _tile = self.prepare_result(result)
 
-        for x_seg in x_segments:
-            for y_seg in y_segments:
-                x_1, x_2 = x_seg
-                y_1, y_2 = y_seg
-                tile = copy.deepcopy(_tile)
-                tile['original_shape_'] = img_shape
-                tile['ori_shape'] = (y_2 - y_1, x_2 - x_1, 3)
-                tile['img_shape'] = tile['ori_shape']
-                tile['tile_box'] = (x_1, y_1, x_2, y_2)
-                tile['dataset_idx'] = dataset_idx
-                tile['gt_bboxes_ignore'] = gt_bboxes_ignore
-                tile['uuid'] = str(uuid.uuid4())
-                self.tile_ann_assignment(tile, np.array([[x_1, y_1, x_2, y_2]]), gt_bboxes, gt_masks, gt_labels)
-                # filter empty ground truth
-                if self.filter_empty_gt and len(tile['gt_labels']) == 0:
-                    continue
-                tile_list.append(tile)
+        num_patches_h = int((height - self.tile_size) / self.stride) + 1
+        num_patches_w = int((width - self.tile_size) / self.stride) + 1
+        for (tile_i, tile_j), (loc_i, loc_j) in zip(
+            product(range(num_patches_h), range(num_patches_w)),
+            product(
+                range(0, height - self.tile_size + 1, self.stride),
+                range(0, width - self.tile_size + 1, self.stride),
+            ),
+        ):
+            x_1 = loc_j
+            x_2 = loc_j + self.tile_size
+            y_1 = loc_i
+            y_2 = loc_i + self.tile_size
+            tile = copy.deepcopy(_tile)
+            tile['original_shape_'] = img_shape
+            tile['ori_shape'] = (y_2 - y_1, x_2 - x_1, 3)
+            tile['img_shape'] = tile['ori_shape']
+            tile['tile_box'] = (x_1, y_1, x_2, y_2)
+            tile['dataset_idx'] = dataset_idx
+            tile['gt_bboxes_ignore'] = gt_bboxes_ignore
+            tile['uuid'] = str(uuid.uuid4())
+            self.tile_ann_assignment(tile, np.array([[x_1, y_1, x_2, y_2]]), gt_bboxes, gt_masks, gt_labels)
+            # filter empty ground truth
+            if self.filter_empty_gt and len(tile['gt_labels']) == 0:
+                continue
+            tile_list.append(tile)
         return tile_list
 
     def prepare_result(self, result: Dict) -> Dict:
@@ -223,27 +231,6 @@ class Tile:
             tile_result['gt_bboxes'] = []
             tile_result['gt_labels'] = []
             tile_result['gt_masks'] = []
-
-    def slice_2d(self, length: int) -> List[Tuple[float, float]]:
-        """Slices a segment of any length based on the tile size and stride of
-        the tiler.
-
-        Args:
-            length (int): length of a segment to slice.
-
-        Returns:
-            List[Tuple[float, float]]: list of relative start and end points of
-                segments resulted from the slicing.
-        """
-        segments = set()
-        for head in range(0, length, self.stride):
-            start, end = head, head + self.tile_size
-            if end > length:
-                start, end = length - self.tile_size, length
-            if start < 0:
-                start = 0
-            segments.add((start, end))
-        return list(segments)
 
     def tile_boxes_overlap(self, tile_box: np.ndarray, boxes: np.ndarray) -> np.ndarray:
         """Compute overlapping ratio over boxes.
