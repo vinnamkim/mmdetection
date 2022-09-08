@@ -302,7 +302,6 @@ class MAE:
 
         predicted_boxes_per_image = self.filter_confidence(predicted_boxes_per_image, conf_thresold)
         diffs = []
-        relative_ae_diffs = []
         y_preds = []
         y_trues = []
         for class_idx, class_name in classes.items():
@@ -326,12 +325,11 @@ class MAE:
 
             result[class_name] = metrics
             diffs.extend(diff)
-            relative_ae_diffs.extend(relative_ae_diff)
 
         # for all classes
         result[all_classes_name] = _Metrics(
-            np.average(diffs),
-            np.average(relative_ae_diffs),
+            mae=np.average(diffs),
+            relative_mae=np.average(np.array(diffs)/np.array(y_trues)),
             y_pred=y_preds,
             y_true=y_trues,
         )
@@ -410,7 +408,6 @@ class MAE:
 
 class CustomMAE(MAE):
 
-    # TODO[EUGENE]: report rel-MAE with Σ|y_pred - y_true|/ Σ y_true
     def __init__(self, ote_dataset, prediction, ground_truth, vary_confidence_threshold: bool = False,
                  labels: list = [], metric='mae', show_table=True):
         assert metric in ['mae', 'mae%']
