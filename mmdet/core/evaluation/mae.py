@@ -329,7 +329,7 @@ class MAE:
         # for all classes
         result[all_classes_name] = _Metrics(
             mae=np.average(diffs),
-            relative_mae=np.average(np.array(diffs)/np.array(y_trues)),
+            relative_mae=np.average(np.sum(diffs)/np.sum(y_trues)),
             y_pred=y_preds,
             y_true=y_trues,
         )
@@ -346,7 +346,7 @@ class MAE:
         y_true = np.array([len(class_ground_truth_boxes_per_image[idx]) for idx in img_ids])
 
         diff = np.abs(y_pred - y_true)
-        relative_ae = list(diff / (y_true + 1e-16))
+        relative_ae = np.sum(diff)/np.sum((y_true + 1e-16))
 
         results = _Metrics(mae=np.average(diff), relative_mae=np.average(relative_ae), y_pred=y_pred, y_true=y_true)
         return results
@@ -460,8 +460,9 @@ class CustomMAE(MAE):
 
     def prepare_pred(self, results, img_names):
         assert len(results) == len(img_names), "Number of samples not the same"
-        prediction_per_image = defaultdict(list)
+        prediction_per_image = dict()
         for img_name, pred_result in zip(img_names, results):
+            prediction_per_image[img_name] = []
             if isinstance(pred_result, tuple):
                 pred_result, _ = pred_result
             for cls_idx, cls_pred in enumerate(pred_result):

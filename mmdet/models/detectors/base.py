@@ -224,6 +224,7 @@ class BaseDetector(nn.Module, metaclass=ABCMeta):
 
         img_shape = shape_as_tensor(imgs[0])
         imgs_per_gpu = int(imgs[0].size(0))
+        # TODO[EUGENE]: WHY?
         assert imgs_per_gpu == 1
         assert len(self.img_metas[0]) == imgs_per_gpu, f'self.img_metas={self.img_metas}'
         self.img_metas[0][0]['img_shape'] = img_shape[2:4]
