@@ -409,7 +409,7 @@ class MAE:
 class CustomMAE(MAE):
 
     def __init__(self, ote_dataset, prediction, ground_truth, vary_confidence_threshold: bool = False,
-                 labels: list = [], metric='mae', show_table=True):
+                 labels: list = [], metric='mae', show_table=False):
         assert metric in ['mae', 'mae%']
         self.metric = metric
         self.box_score_index = 0

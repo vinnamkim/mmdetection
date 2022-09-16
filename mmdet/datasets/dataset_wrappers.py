@@ -443,8 +443,9 @@ class ImageTilingDataset:
 
         self.CLASSES = dataset.CLASSES
         self.tmp_dir = tempfile.TemporaryDirectory()
+        self.dataset = dataset
         self.tile_dataset = Tile(
-            dataset,
+            self.dataset,
             tmp_dir=self.tmp_dir,
             tile_size=tile_size,
             overlap=overlap_ratio,
@@ -456,6 +457,7 @@ class ImageTilingDataset:
         self.pipeline = Compose(pipeline)
         self.test_mode = test_mode
         self.num_samples = len(dataset)  # number of original samples
+        self.merged_results = None
 
     def __len__(self) -> int:
         return len(self.tile_dataset)
@@ -480,10 +482,12 @@ class ImageTilingDataset:
         Returns:
             dict[str, float]: evaluation metric.
         """
-        return self.tile_dataset.evaluate(results, **kwargs)
+        self.merged_results = self.tile_dataset.merge(results)
+        return self.dataset.evaluate(self.merged_results, **kwargs)
 
     def merge(self, results):
-        return self.tile_dataset.merge(results)
+        self.merged_results = self.tile_dataset.merge(results)
+        return self.merged_results
 
     def __del__(self):
         if getattr(self, 'tmp_dir', False):

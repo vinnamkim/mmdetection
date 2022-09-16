@@ -19,7 +19,7 @@ import tempfile
 import uuid
 from multiprocessing import Pool
 from time import time
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 import mmcv
 import numpy as np
@@ -93,7 +93,6 @@ class Tile:
 
     @timeit
     def cache_tiles(self):
-        # TODO[EUGENE]: INCLUDE ORIGINAL IMAGE FOR TRAINING AS WELL
         pbar = tqdm(total=len(self.tiles))
         pre_img_idx = None
         for i, tile in enumerate(self.tiles):
@@ -118,21 +117,40 @@ class Tile:
         """
         tiles = []
         pbar = tqdm(total=len(self.dataset))
+
+        for idx, result in enumerate(self.dataset):
+            tiles.append(self.gen_single_img(result, dataset_idx=idx))
+
         for idx, result in enumerate(self.dataset):
             tiles.extend(self.gen_tiles_single_img(result, dataset_idx=idx))
             pbar.update(1)
         return tiles
 
+    def gen_single_img(self, result: Dict, dataset_idx: int) -> Dict:
+        """ Add full-size image for inference or training
+
+        Args:
+            result (Dict): the original image-level result (i.e. the original image annotation)
+            dataset_idx (int): the image index this tile belongs to
+
+        Returns:
+            Dict: annotation with some other useful information for data pipeline.
+        """
+        result['tile_box'] = (0, 0, result['dataset_item'].width, result['dataset_item'].height)
+        result['dataset_idx'] = dataset_idx
+        result['original_shape_'] = result['img_shape']
+        result['uuid'] = str(uuid.uuid4())
+        return result
+
     def gen_tiles_single_img(self, result: Dict, dataset_idx: int) -> List[Dict]:
         """Generate tile annotation for a single image.
 
         Args:
-            result (Dict): the original image-level result (i.e. the original
-            image annotation) dataset_idx (int): the image index this tile
-            belongs to
+            result (Dict): the original image-level result (i.e. the original image annotation)
+            dataset_idx (int): the image index this tile belongs to
 
         Returns:
-            List[Dict]: tile annotation with some other useful information for data pipeline.
+            List[Dict]: a list of tile annotation with some other useful information for data pipeline.
         """
         tile_list = []
         gt_bboxes = result.pop('gt_bboxes', np.zeros((0, 4), dtype=np.float32))
@@ -339,6 +357,14 @@ class Tile:
 
     @staticmethod
     def readjust_tile_mask(tile_rle: Dict):
+        """ Shift tile-level mask to image-level mask
+
+        Args:
+            tile_rle (Dict): _description_
+
+        Returns:
+            _type_: _description_
+        """
         x1, y1, x2, y2 = tile_rle.pop('tile_box')
         H, W = tile_rle.pop('img_size')
         tile_mask = mask_util.decode(tile_rle)
@@ -423,18 +449,3 @@ class Tile:
 
         assert len(merged_bbox_results) == len(merged_mask_results)
         return list(zip(merged_bbox_results, merged_mask_results))
-
-    def evaluate(self, results, **kwargs) -> Dict[str, float]:
-        """Evaluation on tiled dataset.
-
-        Evaluate on dataset after merging the tile-level results to image-level
-        result.
-
-        Args:
-            results (list[list | tuple]): Testing results of the dataset.
-
-        Returns:
-            dict[str, float]: evaluation metric.
-        """
-        merged_results = self.merge(results)
-        return self.dataset.evaluate(merged_results, **kwargs)
