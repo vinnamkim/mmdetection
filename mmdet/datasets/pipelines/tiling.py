@@ -66,6 +66,7 @@ class Tile:
 
     def __init__(self,
                  dataset,
+                 pipeline,
                  tmp_dir: tempfile.TemporaryDirectory,
                  tile_size: int = 400,
                  overlap: float = 0.2,
@@ -86,6 +87,11 @@ class Tile:
         self.CLASSES = dataset.CLASSES
         self.tmp_folder = tmp_dir.name
         self.nproc = nproc
+        self.img2fp32 = False
+        for p in pipeline:
+            if p.type == 'PhotoMetricDistortion':
+                self.img2fp32 = True
+                break
 
         self.dataset = dataset
         self.tiles = self.gen_tile_ann()
@@ -240,7 +246,7 @@ class Tile:
             tile_bboxes[:, 3] = np.minimum(self.tile_size, tile_bboxes[:, 3])
             tile_result['gt_bboxes'] = tile_bboxes
             tile_result['gt_labels'] = tile_lables
-            tile_result['gt_masks'] = gt_masks[match_idx].crop(tile_box[0])
+            tile_result['gt_masks'] = gt_masks[match_idx].crop(tile_box[0]) if gt_masks is not None else []
         else:
             tile_result.pop('bbox_fields')
             tile_result.pop('mask_fields')
@@ -249,6 +255,9 @@ class Tile:
             tile_result['gt_bboxes'] = []
             tile_result['gt_labels'] = []
             tile_result['gt_masks'] = []
+
+        if gt_masks is None:
+            tile_result.pop('gt_masks')
 
     def tile_boxes_overlap(self, tile_box: np.ndarray, boxes: np.ndarray) -> np.ndarray:
         """Compute overlapping ratio over boxes.
@@ -299,7 +308,7 @@ class Tile:
         return dets, keep
 
     def tile_nms(self, bbox_results: List[np.ndarray], mask_results: List[List], label_results: List[np.ndarray],
-                 iou_threshold: float, max_per_img: int):
+                 iou_threshold: float, max_per_img: int, detection: bool):
         """NMS after aggregation suppressing duplicate boxes in tile-overlap
         areas.
 
@@ -325,13 +334,13 @@ class Tile:
             bboxes = bboxes[keep_indices]
             labels = labels[keep_indices]
             scores = scores[keep_indices]
-            masks = [masks[keep_idx] for keep_idx in keep_indices]
-            masks = self.process_masks(masks)
-
             bbox_results[i] = bbox2result(np.concatenate(
                 [bboxes, scores[:, None]], -1), labels, self.num_classes)
 
-            mask_results[i] = [list(np.asarray(masks)[labels == i]) for i in range(self.num_classes)]
+            if not detection:
+                masks = [masks[keep_idx] for keep_idx in keep_indices]
+                masks = self.process_masks(masks)
+                mask_results[i] = [list(np.asarray(masks)[labels == i]) for i in range(self.num_classes)]
 
     def __len__(self):
         return len(self.tiles)
@@ -347,11 +356,16 @@ class Tile:
         """
         result = copy.deepcopy(self.tiles[idx])
         if osp.isfile(result['tile_path']):
-            result['img'] = mmcv.imread(result['tile_path'])
+            img = mmcv.imread(result['tile_path'])
+            if self.img2fp32:
+                img = img.astype(np.float32)
+            result['img'] = img
             return result
         dataset_idx = result['dataset_idx']
         x_1, y_1, x_2, y_2 = result['tile_box']
         ori_img = self.dataset[dataset_idx]['img']
+        if self.img2fp32:
+            ori_img = ori_img.astype(np.float32)
         result['img'] = ori_img[y_1:y_2, x_1:x_2, :]
         return result
 
@@ -396,10 +410,12 @@ class Tile:
         """
         assert len(results) == len(self.tiles)
 
+        detection = False
         if isinstance(results[0], tuple):
             num_classes = len(results[0][0])
             dtype = results[0][0][0].dtype
         elif isinstance(results[0], list):
+            detection = True
             num_classes = len(results[0])
             dtype = results[0][0].dtype
         else:
@@ -435,7 +451,6 @@ class Tile:
 
                 for m in cls_mask_result:
                     m.update(dict(tile_box=tile['tile_box'], img_size=(img_h, img_w)))
-
                 merged_mask_results[img_idx] += cls_mask_result
 
         # run NMS after aggregation suppressing duplicate boxes in
@@ -445,7 +460,10 @@ class Tile:
             merged_mask_results,
             merged_label_results,
             iou_threshold=self.iou_threshold,
-            max_per_img=self.max_per_img)
+            max_per_img=self.max_per_img,
+            detection=detection)
 
         assert len(merged_bbox_results) == len(merged_mask_results)
+        if detection:
+            return list(merged_bbox_results)
         return list(zip(merged_bbox_results, merged_mask_results))

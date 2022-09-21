@@ -446,6 +446,7 @@ class ImageTilingDataset:
         self.dataset = dataset
         self.tile_dataset = Tile(
             self.dataset,
+            pipeline,
             tmp_dir=self.tmp_dir,
             tile_size=tile_size,
             overlap=overlap_ratio,
