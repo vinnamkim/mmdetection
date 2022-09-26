@@ -355,7 +355,7 @@ class Tile:
             dict: Training/test data.
         """
         result = copy.deepcopy(self.tiles[idx])
-        if osp.isfile(result['tile_path']):
+        if result.get('tile_path') and osp.isfile(result['tile_path']):
             img = mmcv.imread(result['tile_path'])
             if self.img2fp32:
                 img = img.astype(np.float32)

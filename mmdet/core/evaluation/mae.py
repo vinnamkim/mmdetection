@@ -329,7 +329,7 @@ class MAE:
         # for all classes
         result[all_classes_name] = _Metrics(
             mae=np.average(diffs),
-            relative_mae=np.average(np.sum(diffs)/np.sum(y_trues)),
+            relative_mae=np.average(np.sum(diffs)/(np.sum(y_trues) + 1e-16)),
             y_pred=y_preds,
             y_true=y_trues,
         )
@@ -346,7 +346,7 @@ class MAE:
         y_true = np.array([len(class_ground_truth_boxes_per_image[idx]) for idx in img_ids])
 
         diff = np.abs(y_pred - y_true)
-        relative_ae = np.sum(diff)/np.sum((y_true + 1e-16))
+        relative_ae = np.sum(diff)/(np.sum(y_true) + 1e-16)
 
         results = _Metrics(mae=np.average(diff), relative_mae=np.average(relative_ae), y_pred=y_pred, y_true=y_true)
         return results
