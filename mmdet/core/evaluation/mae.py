@@ -3,7 +3,7 @@ import math
 import numpy as np
 from collections import defaultdict, OrderedDict
 from typing import Dict, List, Optional, Tuple, Union
-from prettytable import PrettyTable
+# from prettytable import PrettyTable
 
 
 class ScoreMetric:
@@ -312,16 +312,16 @@ class MAE:
             y_preds.extend(list(metrics.y_pred))
             y_trues.extend(list(metrics.y_true))
             diff = list(np.abs(metrics.y_pred - metrics.y_true))
-            relative_ae_diff = list(np.round(diff / (metrics.y_true + 1e-16), 2))
 
-            if self.show_table:
-                table = PrettyTable()
-                table.add_column(f"names-{class_name}-thres:{conf_thresold:.3f}", list(img_ids))
-                table.add_column("y_pred", list(metrics.y_pred))
-                table.add_column("y_true", list(metrics.y_true))
-                table.add_column("diff", diff)
-                table.add_column("error%", relative_ae_diff)
-                print(table)
+            # if self.show_table:
+            #     relative_ae_diff = list(np.round(diff / (metrics.y_true + 1e-16), 2))
+            #     table = PrettyTable()
+            #     table.add_column(f"names-{class_name}-thres:{conf_thresold:.3f}", list(img_ids))
+            #     table.add_column("y_pred", list(metrics.y_pred))
+            #     table.add_column("y_true", list(metrics.y_true))
+            #     table.add_column("diff", diff)
+            #     table.add_column("error%", relative_ae_diff)
+            #     print(table)
 
             result[class_name] = metrics
             diffs.extend(diff)
