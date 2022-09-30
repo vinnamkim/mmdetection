@@ -298,6 +298,8 @@ class Tile:
         Returns:
             tuple: tuple: kept dets and indice.
         """
+        if len(boxes) == 0:
+            return None, []
         max_coordinate = boxes.max()
         offsets = idxs.astype(boxes.dtype) * (max_coordinate + 1)
         boxes_for_nms = boxes + offsets[:, None]
