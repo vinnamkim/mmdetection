@@ -9,7 +9,7 @@ from .auto_augment import (AutoAugment, BrightnessTransform, ColorTransform,
                            Translate)
 from .compose import Compose
 from .copy_paste_aug import CopyPaste
-from .formating import (Collect, DefaultFormatBundle, ImageToTensor,
+from .formating import (Collect, DefaultFormatBundle, LabelNoiseBundle, ImageToTensor,
                         ToDataContainer, ToTensor, Transpose, to_tensor)
 from .instaboost import InstaBoost
 from .loading import (LoadAnnotations, LoadImageFromFile, LoadImageFromWebcam,
@@ -22,7 +22,7 @@ from .transforms import (Albu, CutOut, Expand, MinIoURandomCrop, MixUp, Mosaic,
 
 __all__ = [
     'Compose', 'to_tensor', 'ToTensor', 'ImageToTensor', 'ToDataContainer',
-    'Transpose', 'Collect', 'DefaultFormatBundle', 'LoadAnnotations',
+    'Transpose', 'Collect', 'DefaultFormatBundle', 'LabelNoiseBundle', 'LoadAnnotations',
     'LoadImageFromFile', 'LoadImageFromWebcam',
     'LoadMultiChannelImageFromFiles', 'LoadProposals', 'MultiScaleFlipAug',
     'Resize', 'RandomFlip', 'Pad', 'RandomCrop', 'Normalize', 'SegRescale',

@@ -255,6 +255,17 @@ class DefaultFormatBundle(object):
 
 
 @PIPELINES.register_module()
+class LabelNoiseBundle(object):
+    def __call__(self, results):
+        ann_info = results["ann_info"]
+        for key in ["noise_labels", "anno_ids"]:
+            if key not in ann_info:
+                continue
+            results[key] = DC(to_tensor(ann_info[key]))
+        return results
+
+
+@PIPELINES.register_module()
 class Collect(object):
     """Collect data from the loader relevant to the specific task.
 
