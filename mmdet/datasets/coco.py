@@ -751,6 +751,9 @@ class LabelNoiseCocoDataset(CocoDataset):
             bbox = [x1, y1, x1 + w, y1 + h]
             if ann.get('iscrowd', False):
                 gt_bboxes_ignore.append(bbox)
+            elif ann.get("noise") == 3:
+                gt_bboxes_ignore.append(bbox)
+                #continue # Synthesized missing labels
             else:
                 gt_bboxes.append(bbox)
                 gt_labels.append(self.cat2label[ann['category_id']])
